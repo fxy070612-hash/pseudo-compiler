@@ -223,6 +223,10 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
   已在仓库级固定绕过：`git config core.sshCommand "ssh -F /dev/null -i ~/.ssh/github_ed25519 -o IdentitiesOnly=yes"`
   密钥对在 `~/.ssh/github_ed25519`（公钥已加到账号）；github.com 已写入 `known_hosts`。
 - **推送流程**：`git add -A && git commit -m "..." && git push`（`main` 已跟踪 `origin/main`）。
+  ⚠️ **本机 push 会偶发「静默失败」**：命令零输出、退出码 0，但远程其实没更新（已遇到 2 次，均在当次重推后成功）。
+  所以**每次都务必复核**：`git rev-parse HEAD` 与 `git ls-remote origin refs/heads/main` 必须相等。
+  重推时用带保活的写法更稳：
+  `GIT_SSH_COMMAND="ssh -F /dev/null -i ~/.ssh/github_ed25519 -o IdentitiesOnly=yes -o ServerAliveInterval=5" git push origin main`
 
 ### 9.1 入库范围（.gitignore 的取舍）
 
