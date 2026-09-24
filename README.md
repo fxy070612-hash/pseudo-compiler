@@ -3,23 +3,21 @@
 在浏览器里写伪代码 → 编译成可运行代码 → 复杂度静态推导 + **运行实测** → 多解对拍 → 可选 AI 评测。
 内置《算法导论》第 4 版 **35 章 / 345 道**可编程练习题（中文题意）。
 
+![主界面](docs/screenshot-main.png)
+
 ## ⬇️ 怎么用
 
-### 1. 在线直接打开（什么都不用下载）
-
-**<https://fxy070612-hash.github.io/pseudo-compiler/>**
-
-> 如果返回 404，说明仓库还没开启 Pages：仓库 `Settings ▸ Pages ▸ Source` 选 **Deploy from a branch** → 分支 `main` → 目录 `/ (root)` → Save，等约 1 分钟即可。
-
-### 2. 下载到本机（离线可用，推荐）
+### 1. 下载到本机（离线可用，推荐）
 
 - **只要一个文件**：打开 [`伪代码编译器.html`](https://github.com/fxy070612-hash/pseudo-compiler/blob/main/%E4%BC%AA%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E5%99%A8.html) → 点右上角 **⬇ Download raw file** → 双击打开就能用。
-  （695 KB，离线可用、无需安装、无服务器、零外部依赖，Edge / Chrome 均可）
+  （695 KB，离线可用、无需安装、无需联网、无服务器、零外部依赖，Edge / Chrome 均可）
 - **想要源码**：点 **`Code ▸ Download ZIP`**（约 2.3 MB，含全部源码、构建脚本与数据）。
+- **想固定某个版本**：仓库 `Tags ▸ v1.0.0 ▸ Download ZIP`，拿到的是打标签那一刻的快照。
 
 > **只用不开发的话，你只需要上面那一个 HTML 文件**。仓库里其余都是源码、构建脚本和数据，不必下载。
+> 下载后建议放到一个固定目录再双击，浏览器打开本地文件无需任何服务器。
 
-### 3. 想改源码
+### 2. 想改源码
 
 下载 ZIP → 改 `shell.html`（骨架/CSS）、`ui.js`（界面层）、`core_py.js`（编译内核）→ 按下面「构建」重新生成单文件。
 
@@ -28,6 +26,22 @@
 - **开箱可用**：伪代码编译、复杂度分析、多解对拍、书本习题库都不需要联网、不需要配置。
 - **AI 功能需要自备 API Key**：右上角 `⚙ AI 设置` 里填 Base URL / 模型 / Key。Key 只保存在本机浏览器 localStorage，不会上传、也不会随仓库分发。不填也不影响其他功能。
 - 本地改过文件后如果界面没变，**Ctrl+F5** 强刷。
+
+## 📚 书本习题库（35 章 / 345 题，已内置）
+
+**题目就在成品里，不需要额外下载数据**。打开 `伪代码编译器.html` → 点左侧「**书本习题**」，即可看到按章分组的全部 345 题：
+
+![书本习题面板](docs/screenshot-book-panel.png)
+
+- 题型分布：**写算法 136 题、设计数据结构 63 题、改写算法 62 题、模拟过程 56 题、分析并实现 28 题**
+  （纯证明／纯推导／判断对错／纯讨论题已剔除：原书 823 题 → 保留 345 题）
+- 面板里可**搜索**（题号／标题／关键字，如 `heapsort`、`最短路`）、**勾选多题**，再点「加入我的题库」，
+  之后便和自己的题目一样作答（带起步模板、编译、复杂度评测）。
+- 不想下载应用也能直接看题：
+  - **在网页上读题单** → [`docs/BOOK.md`](docs/BOOK.md)（35 章 345 题，按小节排列，含完整中文题意与输入／输出／提示）
+  - **读原始数据** → [`book_data.json`](book_data.json)（纯 JSON，每题 13 个字段）
+
+> 题单由 `book_data.json` 自动生成（`python3 _bookmd.py`），与应用内置的是**同一份数据**，不存在第二份真相。
 
 ## 功能
 
@@ -84,6 +98,7 @@ end
 
 ```bash
 python3 _bookbuild.py          # book_out/*.json → book_data.json / book_data.js
+python3 _bookmd.py             # book_data.json → docs/BOOK.md（网页可直接阅读的题单）
 PCDIR=$PWD node _mk.js         # shell.html + book_data.js + core_py.js + ui.js → 伪代码编译器.html
 ```
 
@@ -104,13 +119,15 @@ python3 _qa2.py                  # 题库体检：题数 345 / 章节 35 / 问�
 | 路径 | 说明 |
 | --- | --- |
 | `伪代码编译器.html` | **成品**（单文件，双击即用） |
-| `index.html` | GitHub Pages 入口（自动跳转到上面的成品，不是应用本体） |
+| `index.html` | 备用入口页：打开它会自动跳到上面的成品（若以后开启 GitHub Pages，根路径也用它） |
 | `shell.html` | 页面骨架与样式（含 `/*__BOOK__*/`、`/*__CORE__*/`、`/*__UI__*/` 三个注入位） |
 | `ui.js` | 界面层：题目／多解／题库／书本习题面板／AI 评测 |
 | `core_py.js` | 编译内核：词法→语法→语义→Python 目标码→复杂度代数→沙箱解释器 |
 | `book_data.json` / `book_data.js` | 书本习题数据（35 章 / 345 题；构建时注入成品） |
 | `book_out/` | 题目翻译成品（每题 13 字段），`_bookbuild.py` 的输入 |
-| `_mk.js`、`_bookbuild.py` | 构建脚本 |
+| `docs/BOOK.md` | 网页可直接阅读的**题单**（全部 345 题，`_bookmd.py` 生成） |
+| `docs/screenshot-*.png` | 界面截图（README 用） |
+| `_mk.js`、`_bookbuild.py`、`_bookmd.py` | 构建与文档生成脚本 |
 | `_kt.js`、`_startercheck.js`、`_smoke_book.js`、`_qa2.py`、`_report.py` | 回归与体检脚本 |
 | `HANDOFF.md` | 工程交接与历史修复记录（含根因、实测数据与踩坑） |
 | `README.legacy.md` | 旧版说明（部分内容已过时，保留备查） |
@@ -121,8 +138,8 @@ python3 _qa2.py                  # 题库体检：题数 345 / 章节 35 / 问�
 ## 下载打不开 / 很慢？
 
 - `raw.githubusercontent.com` 的直链在**部分网络（含国内）会被墙**，这是已知情况，不是仓库问题。请改用 **`Code ▸ Download ZIP`**（走 `codeload.github.com`，实测可用）。
-- 在线版走的是 GitHub Pages，域名是 `fxy070612-hash.github.io`，与 `raw` 不是同一个域名，通常可用。
+- 同理，`⬇ Download raw file` 按钮若没反应，说明你的网络到 `raw.githubusercontent.com` 不通，改用上面的 ZIP 即可。
 
 ## 关于书本习题数据的版权说明
 
-`book_data.*` 与 `book_out/` 中的 345 道题，是针对《算法导论》（*Introduction to Algorithms*, 4th ed.）习题的**中文翻译与改写**，供个人学习使用；原著版权归 MIT Press 及作者所有。本仓库**不包含**原著正文与英文原题文本。若版权方提出异议，将立即移除相关数据。
+`book_data.*`、`book_out/` 与 `docs/BOOK.md` 中的 345 道题，是针对《算法导论》（*Introduction to Algorithms*, 4th ed.）习题的**中文翻译与改写**，供个人学习使用；原著版权归 MIT Press 及作者所有。本仓库**不包含**原著正文与英文原题文本。若版权方提出异议，将立即移除相关数据。
