@@ -1,0 +1,32 @@
+[
+ {
+  "ref": "12.3-3",
+  "chapter": "12",
+  "chapterTitle": "Binary Search Trees",
+  "section": "12.3",
+  "page": 435,
+  "kind": "implement",
+  "title": "用后继指针表示父关系的 BST 三操作",
+  "statement": "假设每个节点 x 不保存指向其父节点的属性 x.p，而是保存指向 x 的后继的属性 x.succ。请在此表示下，给出二叉搜索树 T 上的 TREE-SEARCH、TREE-INSERT 和 TREE-DELETE 的伪代码。这三个过程都应在 O(h) 时间内运行，其中 h 是树 T 的高度。可以假设二叉搜索树中的所有关键字互不相同。（提示：你也许希望实现一个返回某节点父节点的子程序。）",
+  "entry": "tree_search_succ / tree_insert_succ / tree_delete_succ",
+  "inputs": "以 x.succ 代替 x.p 表示的二叉搜索树 T、待查找或插入的关键字 k、待删除的节点 z；可自建辅助子程序 parent(x)",
+  "outputs": "TREE-SEARCH 返回指向含关键字 k 的节点的指针或 NIL；TREE-INSERT 返回修改后的 T；TREE-DELETE 返回删去 z 之后的 T",
+  "hint": "不要试图用 x.succ 直接反推父节点，而是自建 parent(x)：同样从根开始按关键字下降，记录路径上最后一次「向右走」的那个节点，它就是 x 的父节点（x 为根时返回 NIL）——BST 的性质保证这样找到的正是父节点，代价是 O(h)。有了它，INSERT 用 parent 定位插入位置的父节点，DELETE 则把原算法中对 x.p 的访问全部换成 parent(x)。",
+  "note": ""
+ },
+ {
+  "ref": "12.3-7",
+  "chapter": "12",
+  "chapterTitle": "Binary Search Trees",
+  "section": "12.3",
+  "page": 435,
+  "kind": "modify",
+  "title": "用前驱替换后继的 TREE-DELETE 及其公平策略",
+  "statement": "在 TREE-DELETE 中，当节点 z 有两个孩子时，你可以选择它的前驱而不是后继作为 y。如果这样做，TREE-DELETE 还需要做哪些其他改动？有人认为，对前驱和后继给予同等优先级的公平策略能带来更好的实际性能，那么应当如何对 TREE-DELETE 做最小改动来实现这种公平策略？（给出修改后的 TREE-DELETE 伪代码，并说明与原来按后继删除的版本相比改动在哪里；数组下标从 1 开始。）",
+  "entry": "tree_delete_pred / tree_delete_fair",
+  "inputs": "二叉搜索树 T、待删除的节点 z；z 的两个孩子均非 NIL",
+  "outputs": "删去 z 之后的二叉搜索树 T（分别按前驱替换和按前驱/后继等概率公平替换两种版本）",
+  "hint": "把 TREE-DELETE 中的 TREE-MINIMUM(z.right) 换成 TREE-MAXIMUM(z.left)，再把对 z 的 TRANSPLANT 换成对 y 的 TRANSPLANT；注意前驱 y 至多只有左孩子，所以还要把 y 的左孩子（而不是右孩子）接到 y 原来的位置上，并让 y.left = z.left、y.right = z.right（当 y 就是 z.left 时要单独处理，否则会让节点自己指向自己）。公平策略只需在少数几行上改动：在 z 有两个孩子时用一个随机位以 1/2 概率选前驱、1/2 概率选后继，并针对两种情况分别做上面的替换。",
+  "note": "本题只要求比较/改写 TREE-DELETE 的选择策略，不要求做实验；若要做实证比较，需要自己补充随机测试与统计，书上并未给出具体数据集。"
+ }
+]

@@ -1,0 +1,17 @@
+[
+ {
+  "ref": "11.4-2",
+  "chapter": "11",
+  "chapterTitle": "Hash Tables",
+  "section": "11.4",
+  "page": 403,
+  "kind": "implement",
+  "title": "开放寻址散列表的删除 HASH-DELETE",
+  "statement": "写出 HASH-DELETE 的伪代码：它把被删除关键字所占的槽填入特殊值 DELETED；并相应地修改 HASH-SEARCH 和 HASH-INSERT，使这两个过程能够正确处理 DELETED 标记。设开放寻址散列表为 T[1..m]（散列表槽下标从 1 开始），要删除的关键字为 k。",
+  "entry": "hash_delete",
+  "inputs": "开放寻址散列表 T[1..m] 与关键字 k；HASH-SEARCH、HASH-INSERT 同样以 T 与关键字 k 为输入",
+  "outputs": "HASH-DELETE 返回被删除关键字所在的槽（或未找到的标志）；HASH-SEARCH 返回存放 k 的槽号或 NIL；HASH-INSERT 返回新关键字插入的槽号或表满标志",
+  "hint": "关键是把 DELETED 与 NIL 区分开：查找时遇到 DELETED 必须继续沿探测序列往下走，插入时则可把新关键字放进第一个遇到的 DELETED 槽。",
+  "note": "原题要求用特殊值 DELETED 标记被删除的槽（而不是直接置为 NIL），并保持 HASH-SEARCH 与 HASH-INSERT 的探测语义一致。"
+ }
+]

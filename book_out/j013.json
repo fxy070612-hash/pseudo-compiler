@@ -1,0 +1,62 @@
+[
+  {
+    "ref": "10.3-3",
+    "chapter": "10",
+    "chapterTitle": "Elementary Data Structures",
+    "section": "10.3",
+    "page": 362,
+    "kind": "implement",
+    "title": "借助栈非递归地打印二叉树的所有键",
+    "statement": "请写出一个 O(n) 时间的非递归过程，给定一棵含 n 个结点的二叉树，打印出树中每个结点的键值（key）。要求使用栈（stack）作为辅助数据结构。二叉树用链接表示：根结点为 T.root，每个结点 x 含属性 x.key、x.left 和 x.right，没有孩子时相应指针为 NIL；数组下标与本问题无关。每个结点的键恰好打印一次，打印顺序不作要求，但过程必须是迭代的（不得使用递归）。",
+    "entry": "print_binary_tree_iterative",
+    "inputs": "一棵含 n 个结点的二叉树 T（根为 T.root，结点 x 有 x.key、x.left、x.right）",
+    "outputs": "依次输出树中全部 n 个结点的 key（每个键恰好输出一次）",
+    "hint": "用一个空栈保存「已发现但尚未访问」的结点，先压入根；每次弹出一个结点就打印它，再把它的右孩子、左孩子依次压栈。",
+    "note": ""
+  },
+  {
+    "ref": "10.3-4",
+    "chapter": "10",
+    "chapterTitle": "Elementary Data Structures",
+    "section": "10.3",
+    "page": 362,
+    "kind": "implement",
+    "title": "打印左孩子右兄弟表示的有根树的全部键",
+    "statement": "请写出一个 O(n) 时间的过程，打印出一棵含 n 个结点的任意有根树的全部键值。该树采用左孩子右兄弟（left-child, right-sibling）表示法存储：每个结点 x 含属性 x.key、x.left-child 和 x.right-sibling，其中 x.left-child 指向 x 的最左孩子（x 没有孩子时为 NIL），x.right-sibling 指向紧挨在 x 右边的那个兄弟结点（不存在这样的兄弟时为 NIL）；根结点的 parent 为 NIL。要求过程中每个结点只被处理常数次，总时间为 O(n)。",
+    "entry": "print_rooted_tree_lcrs",
+    "inputs": "一棵含 n 个结点、以左孩子右兄弟（left-child, right-sibling）表示法存储的有根树 T（根为 T.root）",
+    "outputs": "依次输出树中全部 n 个结点的 key（每个键恰好输出一次）",
+    "hint": "从根出发，沿 left-child 下探、沿 right-sibling 横扫：在每个结点上打印它，然后依次处理它的最左孩子和该孩子的所有右兄弟。",
+    "note": "题号后带 ★，为书中标注的较难题标记。"
+  },
+  {
+    "ref": "10.3-5",
+    "chapter": "10",
+    "chapterTitle": "Elementary Data Structures",
+    "section": "10.3",
+    "page": 362,
+    "kind": "implement",
+    "title": "常数额外空间的非递归二叉树遍历",
+    "statement": "请写出一个 O(n) 时间的非递归过程，给定一棵含 n 个结点的二叉树，打印出每个结点的键值（key）。要求：除这棵树本身之外，只能使用常数额外空间，即 O(1) 的额外空间（不得使用栈、队列、递归调用栈或随 n 增长的辅助数组）；并且在过程运行期间不得修改这棵树，即使是临时修改也不允许。二叉树用链接表示：根结点为 T.root，每个结点 x 含属性 x.key、x.left、x.right 和 x.p（指向父结点），NIL 表示空指针。",
+    "entry": "print_binary_tree_o1_space",
+    "inputs": "一棵含 n 个结点的二叉树 T（每个结点 x 有 x.key、x.left、x.right、x.p，根为 T.root）",
+    "outputs": "依次输出树中全部 n 个结点的 key（每个键恰好输出一次）",
+    "hint": "既然不能改动树又不能用栈，就靠结点里的父指针 x.p 边走边判断「我刚刚是从父亲、左孩子还是右孩子过来的」，据此决定下一步往哪走；向下走一格时注意记好回来的方向。",
+    "note": "题号后带 ★，为书中标注的较难题标记。"
+  },
+  {
+    "ref": "10.3-6",
+    "chapter": "10",
+    "chapterTitle": "Elementary Data Structures",
+    "section": "10.3",
+    "page": 362,
+    "kind": "design",
+    "title": "两个指针加一个布尔值的树表示法",
+    "statement": "任意有根树的左孩子右兄弟（left-child, right-sibling）表示法在每个结点中使用三个指针：left-child、right-sibling 和 parent。在这种表示法下，从任一结点出发，可以在 O(1) 时间内访问它的父结点，并可以在与孩子数目成线性（即 O(孩子数)，也即与以该结点为根的子树规模成比例）的时间内访问它的全部孩子。请说明如何只用两个指针和一个布尔值（boolean）来存储每个结点 x，使得仍然可以在与 x 的孩子数目成线性的时间内访问 x 的父结点，或者访问 x 的全部孩子。要求给出每个字段的确切含义，以及访问父结点和遍历全部孩子各自的做法。",
+    "entry": "two_pointer_lcrs",
+    "inputs": "一棵含 n 个结点的有根树，其每个结点只允许分配两个指针字段和一个布尔字段",
+    "outputs": "该表示法下每个结点各字段的定义，以及在这种表示法上访问某结点的父结点、枚举某结点的全部孩子这两个过程",
+    "hint": "让两个指针中的一个只对「最左孩子」有特殊含义，用那个布尔值标记当前结点是不是最左孩子，另一个指针则在两种身份之间切换解释（兄弟指针 / 父指针）。",
+    "note": "原题只要求说明存储表示的做法，答案通常是字段定义加上两个访问过程，不必给出完整的遍历或构建算法。"
+  }
+]

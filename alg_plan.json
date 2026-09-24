@@ -1,0 +1,278 @@
+[
+ {
+  "job": "j001",
+  "chapter": "1",
+  "title": "The Role of Algorithms in Computing",
+  "n": 5
+ },
+ {
+  "job": "j002",
+  "chapter": "2",
+  "title": "Getting Started",
+  "n": 15
+ },
+ {
+  "job": "j003",
+  "chapter": "3",
+  "title": "Characterizing Running Times",
+  "n": 5
+ },
+ {
+  "job": "j004",
+  "chapter": "4",
+  "title": "Divide-and-Conquer",
+  "n": 11
+ },
+ {
+  "job": "j005",
+  "chapter": "5",
+  "title": "Probabilistic Analysis and Randomized Algorithms",
+  "n": 10
+ },
+ {
+  "job": "j006",
+  "chapter": "6",
+  "title": "Heapsort",
+  "n": 16
+ },
+ {
+  "job": "j007",
+  "chapter": "6",
+  "title": "Heapsort",
+  "n": 11
+ },
+ {
+  "job": "j008",
+  "chapter": "7",
+  "title": "Quicksort",
+  "n": 11
+ },
+ {
+  "job": "j009",
+  "chapter": "8",
+  "title": "Sorting in Linear Time",
+  "n": 16
+ },
+ {
+  "job": "j010",
+  "chapter": "8",
+  "title": "Sorting in Linear Time",
+  "n": 1
+ },
+ {
+  "job": "j011",
+  "chapter": "9",
+  "title": "Medians and Order Statistics",
+  "n": 10
+ },
+ {
+  "job": "j012",
+  "chapter": "10",
+  "title": "Elementary Data Structures",
+  "n": 16
+ },
+ {
+  "job": "j013",
+  "chapter": "10",
+  "title": "Elementary Data Structures",
+  "n": 4
+ },
+ {
+  "job": "j014",
+  "chapter": "11",
+  "title": "Hash Tables",
+  "n": 16
+ },
+ {
+  "job": "j015",
+  "chapter": "11",
+  "title": "Hash Tables",
+  "n": 3
+ },
+ {
+  "job": "j016",
+  "chapter": "12",
+  "title": "Binary Search Trees",
+  "n": 16
+ },
+ {
+  "job": "j017",
+  "chapter": "12",
+  "title": "Binary Search Trees",
+  "n": 4
+ },
+ {
+  "job": "j018",
+  "chapter": "13",
+  "title": "Red-Black Trees",
+  "n": 16
+ },
+ {
+  "job": "j019",
+  "chapter": "14",
+  "title": "Dynamic Programming",
+  "n": 16
+ },
+ {
+  "job": "j020",
+  "chapter": "14",
+  "title": "Dynamic Programming",
+  "n": 2
+ },
+ {
+  "job": "j021",
+  "chapter": "15",
+  "title": "Greedy Algorithms",
+  "n": 12
+ },
+ {
+  "job": "j022",
+  "chapter": "16",
+  "title": "Amortized Analysis",
+  "n": 8
+ },
+ {
+  "job": "j023",
+  "chapter": "17",
+  "title": "Augmenting Data Structures",
+  "n": 14
+ },
+ {
+  "job": "j024",
+  "chapter": "18",
+  "title": "B-Trees",
+  "n": 12
+ },
+ {
+  "job": "j025",
+  "chapter": "19",
+  "title": "Data Structures for Disjoint Sets",
+  "n": 11
+ },
+ {
+  "job": "j026",
+  "chapter": "20",
+  "title": "Elementary Graph Algorithms",
+  "n": 16
+ },
+ {
+  "job": "j027",
+  "chapter": "20",
+  "title": "Elementary Graph Algorithms",
+  "n": 16
+ },
+ {
+  "job": "j028",
+  "chapter": "20",
+  "title": "Elementary Graph Algorithms",
+  "n": 8
+ },
+ {
+  "job": "j029",
+  "chapter": "21",
+  "title": "Minimum Spanning Trees",
+  "n": 14
+ },
+ {
+  "job": "j030",
+  "chapter": "22",
+  "title": "Single-Source Shortest Paths",
+  "n": 16
+ },
+ {
+  "job": "j031",
+  "chapter": "22",
+  "title": "Single-Source Shortest Paths",
+  "n": 16
+ },
+ {
+  "job": "j032",
+  "chapter": "22",
+  "title": "Single-Source Shortest Paths",
+  "n": 2
+ },
+ {
+  "job": "j033",
+  "chapter": "23",
+  "title": "All-Pairs Shortest Paths",
+  "n": 16
+ },
+ {
+  "job": "j034",
+  "chapter": "23",
+  "title": "All-Pairs Shortest Paths",
+  "n": 4
+ },
+ {
+  "job": "j035",
+  "chapter": "24",
+  "title": "Maximum Flow",
+  "n": 10
+ },
+ {
+  "job": "j036",
+  "chapter": "25",
+  "title": "Matchings in Bipartite Graphs",
+  "n": 13
+ },
+ {
+  "job": "j037",
+  "chapter": "26",
+  "title": "Parallel Algorithms",
+  "n": 16
+ },
+ {
+  "job": "j038",
+  "chapter": "27",
+  "title": "Online Algorithms",
+  "n": 3
+ },
+ {
+  "job": "j039",
+  "chapter": "28",
+  "title": "Matrix Operations",
+  "n": 5
+ },
+ {
+  "job": "j040",
+  "chapter": "29",
+  "title": "Linear Programming",
+  "n": 12
+ },
+ {
+  "job": "j041",
+  "chapter": "30",
+  "title": "Polynomials and the FFT",
+  "n": 12
+ },
+ {
+  "job": "j042",
+  "chapter": "31",
+  "title": "Number-Theoretic Algorithms",
+  "n": 14
+ },
+ {
+  "job": "j043",
+  "chapter": "32",
+  "title": "String Matching",
+  "n": 14
+ },
+ {
+  "job": "j044",
+  "chapter": "33",
+  "title": "Machine-Learning Algorithms",
+  "n": 2
+ },
+ {
+  "job": "j045",
+  "chapter": "34",
+  "title": "NP-Completeness",
+  "n": 15
+ },
+ {
+  "job": "j046",
+  "chapter": "35",
+  "title": "Approximation Algorithms",
+  "n": 11
+ }
+]

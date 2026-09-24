@@ -1,0 +1,62 @@
+[
+  {
+    "ref": "7.1-1",
+    "chapter": "7",
+    "chapterTitle": "Quicksort",
+    "section": "7.1",
+    "page": 260,
+    "kind": "simulate",
+    "title": "PARTITION 过程演示",
+    "statement": "以书上图 7.1 为范例，说明 PARTITION 在数组 A = 〈13, 19, 9, 5, 12, 8, 7, 4, 21, 2, 6, 11〉 上的执行过程（按书中描述的算法逐步给出过程，数组下标从 1 开始，即 A[1..12]，调用 PARTITION(A, 1, 12)，主元取 x = A[r]）。",
+    "entry": "partition",
+    "inputs": "数组 A[1..12] = 〈13, 19, 9, 5, 12, 8, 7, 4, 21, 2, 6, 11〉，以及子数组的左右边界 p = 1、r = 12",
+    "outputs": "主元 A[r] 的最终位置 q，以及划分后的数组 A，满足 A[p..q–1] 中每个元素 ≤ A[q]，A[q+1..r] 中每个元素 > A[q]",
+    "hint": "维护循环不变式，用下标 i 记录「小于等于主元」区域的右端、j 作为扫描指针、x = A[r] 为主元，逐轮记录 i、j 的取值与数组状态，最后把主元换到位置 i + 1。",
+    "note": ""
+  },
+  {
+    "ref": "7.1-2",
+    "chapter": "7",
+    "chapterTitle": "Quicksort",
+    "section": "7.1",
+    "page": 260,
+    "kind": "modify",
+    "title": "改写 PARTITION 使全相等元素时返回中点",
+    "statement": "当子数组 A[p : r] 中的所有元素都具有相同的值时，PARTITION 返回的 q 值是多少？修改 PARTITION，使得当子数组 A[p : r] 中的所有元素都具有相同的值时，返回 q = ⌊(p + r)/2⌋。（数组下标从 1 开始，即 A[1..n]，1 ≤ p ≤ r ≤ n，PARTITION(A, p, r) 以 A[r] 为主元。）",
+    "entry": "partition_equal",
+    "inputs": "数组 A[1..n]（下标从 1 开始）与子数组边界 p、r，1 ≤ p ≤ r ≤ n",
+    "outputs": "修改后的 PARTITION 返回的下标 q，使得 A[p..q–1] 中的元素均 ≤ A[q]，A[q+1..r] 中的元素均 ≥ A[q]；并且当 A[p : r] 中所有元素的值都相同时，q = ⌊(p + r)/2⌋",
+    "hint": "先推出原 PARTITION 在全相等情形下的落点（此时每次比较都成立，i 一直推进到 r – 1，故 q = r），再在同一趟扫描中统计等于主元的元素个数，用该计数把 q 调整到区间中点。",
+    "note": ""
+  },
+  {
+    "ref": "7.1-4",
+    "chapter": "7",
+    "chapterTitle": "Quicksort",
+    "section": "7.1",
+    "page": 260,
+    "kind": "modify",
+    "title": "改写 QUICKSORT 实现递减排序",
+    "statement": "修改 QUICKSORT，使其把数组按单调递减的顺序排序。（数组下标从 1 开始，即对 A[1..n] 排序，要求排序后满足 A[1] ≥ A[2] ≥ … ≥ A[n]。）",
+    "entry": "quicksort_decreasing",
+    "inputs": "数组 A[1..n]（n 个可比较元素，下标从 1 开始）",
+    "outputs": "按单调递减顺序排列的数组 A，即满足 A[1] ≥ A[2] ≥ … ≥ A[n]",
+    "hint": "把划分的比较方向取反：让 PARTITION 把大于等于主元的元素放到左侧、小于主元的元素放到右侧，并保证 QUICKSORT 的两个递归调用与新的划分语义一致。",
+    "note": ""
+  },
+  {
+    "ref": "7.4-5",
+    "chapter": "7",
+    "chapterTitle": "Quicksort",
+    "section": "7.4",
+    "page": 275,
+    "kind": "analyze",
+    "title": "粗化递归的快速排序与阈值 k 的选取",
+    "statement": "如同在思考题 2-1 中对归并排序所做的那样，粗化递归（coarsening the recursion）是实践中提高快速排序运行速度的常用方法。我们修改递归的基线情形（base case）：如果数组中的元素少于 k 个，就用插入排序对该子数组排序，而不再继续递归调用快速排序。请论证该排序算法的随机化版本（RANDOMIZED-QUICKSORT 的这一变体）的期望运行时间为 O(nk + n lg(n/k))。理论上和实践上应如何选取 k？（数组下标从 1 开始，即对 A[1..n] 排序，1 ≤ k ≤ n。）",
+    "entry": "quicksort_coarsened",
+    "inputs": "数组 A[1..n]（n 个可比较元素，下标从 1 开始）与阈值参数 k，1 ≤ k ≤ n",
+    "outputs": "排序后的数组 A[1..n]，以及对期望运行时间 O(nk + n lg(n/k)) 的论证与关于 k 的选取建议（理论上与实践上）",
+    "hint": "把递归树在子问题规模降到 k 时截断：其上约 lg(n/k) 层每层的期望划分代价为 Θ(n)，共 O(n lg(n/k))；剩下的 n/k 个子数组各用插入排序，单个期望代价为 O(k²)，合计 O(nk)。再令两项平衡即可讨论 k 的取值。",
+    "note": "原题带 ★ 标记，表示该题有一定难度。"
+  }
+]

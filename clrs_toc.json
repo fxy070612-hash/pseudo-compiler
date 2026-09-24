@@ -1,0 +1,955 @@
+{
+ "parts": [
+  {
+   "title": "Copyright",
+   "page": 4,
+   "chapters": []
+  },
+  {
+   "title": "Preface",
+   "page": 13,
+   "chapters": []
+  },
+  {
+   "title": "I Foundations",
+   "page": 24,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 25,
+     "sections": []
+    },
+    {
+     "title": "1 The Role of Algorithms in Computing",
+     "page": 28,
+     "sections": [
+      {
+       "title": "1.1 Algorithms",
+       "page": 28
+      },
+      {
+       "title": "1.2 Algorithms as a technology",
+       "page": 37
+      }
+     ]
+    },
+    {
+     "title": "2 Getting Started",
+     "page": 44,
+     "sections": [
+      {
+       "title": "2.1 Insertion sort",
+       "page": 44
+      },
+      {
+       "title": "2.2 Analyzing algorithms",
+       "page": 53
+      },
+      {
+       "title": "2.3 Designing algorithms",
+       "page": 64
+      }
+     ]
+    },
+    {
+     "title": "3 Characterizing Running Times",
+     "page": 85,
+     "sections": [
+      {
+       "title": "3.1 O-notation, Ω-notation, and Θ-notation",
+       "page": 86
+      },
+      {
+       "title": "3.2 Asymptotic notation: formal definitions",
+       "page": 91
+      },
+      {
+       "title": "3.3 Standard notations and common functions",
+       "page": 103
+      }
+     ]
+    },
+    {
+     "title": "4 Divide-and-Conquer",
+     "page": 119,
+     "sections": [
+      {
+       "title": "4.1 Multiplying square matrices",
+       "page": 125
+      },
+      {
+       "title": "4.2 Strassen’s algorithm for matrix multiplication",
+       "page": 131
+      },
+      {
+       "title": "4.3 The substitution method for solving recurrences",
+       "page": 138
+      },
+      {
+       "title": "4.4 The recursion-tree method for solving recurrences",
+       "page": 144
+      },
+      {
+       "title": "4.5 The master method for solving recurrences",
+       "page": 153
+      },
+      {
+       "title": "★ 4.6 Proof of the continuous master theorem",
+       "page": 160
+      },
+      {
+       "title": "★ 4.7 Akra-Bazzi recurrences",
+       "page": 170
+      }
+     ]
+    },
+    {
+     "title": "5 Probabilistic Analysis and Randomized Algorithms",
+     "page": 184,
+     "sections": [
+      {
+       "title": "5.1 The hiring problem",
+       "page": 184
+      },
+      {
+       "title": "5.2 Indicator random variables",
+       "page": 189
+      },
+      {
+       "title": "5.3 Randomized algorithms",
+       "page": 194
+      },
+      {
+       "title": "★ 5.4 Probabilistic analysis and further uses of indicator random variables",
+       "page": 202
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "II Sorting and Order Statistics",
+   "page": 223,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 224,
+     "sections": []
+    },
+    {
+     "title": "6 Heapsort",
+     "page": 229,
+     "sections": [
+      {
+       "title": "6.1 Heaps",
+       "page": 229
+      },
+      {
+       "title": "6.2 Maintaining the heap property",
+       "page": 233
+      },
+      {
+       "title": "6.3 Building a heap",
+       "page": 236
+      },
+      {
+       "title": "6.4 The heapsort algorithm",
+       "page": 240
+      },
+      {
+       "title": "6.5 Priority queues",
+       "page": 243
+      }
+     ]
+    },
+    {
+     "title": "7 Quicksort",
+     "page": 255,
+     "sections": [
+      {
+       "title": "7.1 Description of quicksort",
+       "page": 255
+      },
+      {
+       "title": "7.2 Performance of quicksort",
+       "page": 261
+      },
+      {
+       "title": "7.3 A randomized version of quicksort",
+       "page": 267
+      },
+      {
+       "title": "7.4 Analysis of quicksort",
+       "page": 268
+      }
+     ]
+    },
+    {
+     "title": "8 Sorting in Linear Time",
+     "page": 284,
+     "sections": [
+      {
+       "title": "8.1 Lower bounds for sorting",
+       "page": 284
+      },
+      {
+       "title": "8.2 Counting sort",
+       "page": 288
+      },
+      {
+       "title": "8.3 Radix sort",
+       "page": 292
+      },
+      {
+       "title": "8.4 Bucket sort",
+       "page": 297
+      }
+     ]
+    },
+    {
+     "title": "9 Medians and Order Statistics",
+     "page": 312,
+     "sections": [
+      {
+       "title": "9.1 Minimum and maximum",
+       "page": 313
+      },
+      {
+       "title": "9.2 Selection in expected linear time",
+       "page": 315
+      },
+      {
+       "title": "9.3 Selection in worst-case linear time",
+       "page": 324
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "III Data Structures",
+   "page": 339,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 340,
+     "sections": []
+    },
+    {
+     "title": "10 Elementary Data Structures",
+     "page": 344,
+     "sections": [
+      {
+       "title": "10.1 Simple array-based data structures: arrays, matrices, stacks, queues",
+       "page": 344
+      },
+      {
+       "title": "10.2 Linked lists",
+       "page": 352
+      },
+      {
+       "title": "10.3 Representing rooted trees",
+       "page": 359
+      }
+     ]
+    },
+    {
+     "title": "11 Hash Tables",
+     "page": 368,
+     "sections": [
+      {
+       "title": "11.1 Direct-address tables",
+       "page": 369
+      },
+      {
+       "title": "11.2 Hash tables",
+       "page": 371
+      },
+      {
+       "title": "11.3 Hash functions",
+       "page": 380
+      },
+      {
+       "title": "11.4 Open addressing",
+       "page": 394
+      },
+      {
+       "title": "11.5 Practical considerations",
+       "page": 404
+      }
+     ]
+    },
+    {
+     "title": "12 Binary Search Trees",
+     "page": 418,
+     "sections": [
+      {
+       "title": "12.1 What is a binary search tree?",
+       "page": 418
+      },
+      {
+       "title": "12.2 Querying a binary search tree",
+       "page": 423
+      },
+      {
+       "title": "12.3 Insertion and deletion",
+       "page": 429
+      }
+     ]
+    },
+    {
+     "title": "13 Red-Black Trees",
+     "page": 442,
+     "sections": [
+      {
+       "title": "13.1 Properties of red-black trees",
+       "page": 442
+      },
+      {
+       "title": "13.2 Rotations",
+       "page": 447
+      },
+      {
+       "title": "13.3 Insertion",
+       "page": 451
+      },
+      {
+       "title": "13.4 Deletion",
+       "page": 462
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "IV Advanced Design and Analysis Techniques",
+   "page": 478,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 479,
+     "sections": []
+    },
+    {
+     "title": "14 Dynamic Programming",
+     "page": 481,
+     "sections": [
+      {
+       "title": "14.1 Rod cutting",
+       "page": 482
+      },
+      {
+       "title": "14.2 Matrix-chain multiplication",
+       "page": 495
+      },
+      {
+       "title": "14.3 Elements of dynamic programming",
+       "page": 506
+      },
+      {
+       "title": "14.4 Longest common subsequence",
+       "page": 521
+      },
+      {
+       "title": "14.5 Optimal binary search trees",
+       "page": 529
+      }
+     ]
+    },
+    {
+     "title": "15 Greedy Algorithms",
+     "page": 552,
+     "sections": [
+      {
+       "title": "15.1 An activity-selection problem",
+       "page": 553
+      },
+      {
+       "title": "15.2 Elements of the greedy strategy",
+       "page": 563
+      },
+      {
+       "title": "15.3 Huffman codes",
+       "page": 570
+      },
+      {
+       "title": "15.4 Offline caching",
+       "page": 581
+      }
+     ]
+    },
+    {
+     "title": "16 Amortized Analysis",
+     "page": 593,
+     "sections": [
+      {
+       "title": "16.1 Aggregate analysis",
+       "page": 594
+      },
+      {
+       "title": "16.2 The accounting method",
+       "page": 599
+      },
+      {
+       "title": "16.3 The potential method",
+       "page": 603
+      },
+      {
+       "title": "16.4 Dynamic tables",
+       "page": 608
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "V Advanced Data Structures",
+   "page": 629,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 630,
+     "sections": []
+    },
+    {
+     "title": "17 Augmenting Data Structures",
+     "page": 633,
+     "sections": [
+      {
+       "title": "17.1 Dynamic order statistics",
+       "page": 633
+      },
+      {
+       "title": "17.2 How to augment a data structure",
+       "page": 640
+      },
+      {
+       "title": "17.3 Interval trees",
+       "page": 644
+      }
+     ]
+    },
+    {
+     "title": "18 B-Trees",
+     "page": 655,
+     "sections": [
+      {
+       "title": "18.1 Definition of B-trees",
+       "page": 660
+      },
+      {
+       "title": "18.2 Basic operations on B-trees",
+       "page": 664
+      },
+      {
+       "title": "18.3 Deleting a key from a B-tree",
+       "page": 675
+      }
+     ]
+    },
+    {
+     "title": "19 Data Structures for Disjoint Sets",
+     "page": 683,
+     "sections": [
+      {
+       "title": "19.1 Disjoint-set operations",
+       "page": 683
+      },
+      {
+       "title": "19.2 Linked-list representation of disjoint sets",
+       "page": 687
+      },
+      {
+       "title": "19.3 Disjoint-set forests",
+       "page": 692
+      },
+      {
+       "title": "★ 19.4 Analysis of union by rank with path compression",
+       "page": 697
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "VI Graph Algorithms",
+   "page": 715,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 716,
+     "sections": []
+    },
+    {
+     "title": "20 Elementary Graph Algorithms",
+     "page": 718,
+     "sections": [
+      {
+       "title": "20.1 Representations of graphs",
+       "page": 718
+      },
+      {
+       "title": "20.2 Breadth-first search",
+       "page": 724
+      },
+      {
+       "title": "20.3 Depth-first search",
+       "page": 736
+      },
+      {
+       "title": "20.4 Topological sort",
+       "page": 746
+      },
+      {
+       "title": "20.5 Strongly connected components",
+       "page": 750
+      }
+     ]
+    },
+    {
+     "title": "21 Minimum Spanning Trees",
+     "page": 762,
+     "sections": [
+      {
+       "title": "21.1 Growing a minimum spanning tree",
+       "page": 763
+      },
+      {
+       "title": "21.2 The algorithms of Kruskal and Prim",
+       "page": 769
+      }
+     ]
+    },
+    {
+     "title": "22 Single-Source Shortest Paths",
+     "page": 785,
+     "sections": [
+      {
+       "title": "22.1 The Bellman-Ford algorithm",
+       "page": 794
+      },
+      {
+       "title": "22.2 Single-source shortest paths in directed acyclic graphs",
+       "page": 800
+      },
+      {
+       "title": "22.3 Dijkstra’s algorithm",
+       "page": 804
+      },
+      {
+       "title": "22.4 Difference constraints and shortest paths",
+       "page": 812
+      },
+      {
+       "title": "22.5 Proofs of shortest-paths properties",
+       "page": 820
+      }
+     ]
+    },
+    {
+     "title": "23 All-Pairs Shortest Paths",
+     "page": 838,
+     "sections": [
+      {
+       "title": "23.1 Shortest paths and matrix multiplication",
+       "page": 841
+      },
+      {
+       "title": "23.2 The Floyd-Warshall algorithm",
+       "page": 849
+      },
+      {
+       "title": "23.3 Johnson’s algorithm for sparse graphs",
+       "page": 858
+      }
+     ]
+    },
+    {
+     "title": "24 Maximum Flow",
+     "page": 869,
+     "sections": [
+      {
+       "title": "24.1 Flow networks",
+       "page": 870
+      },
+      {
+       "title": "24.2 The Ford-Fulkerson method",
+       "page": 876
+      },
+      {
+       "title": "24.3 Maximum bipartite matching",
+       "page": 897
+      }
+     ]
+    },
+    {
+     "title": "25 Matchings in Bipartite Graphs",
+     "page": 911,
+     "sections": [
+      {
+       "title": "25.1 Maximum bipartite matching (revisited)",
+       "page": 912
+      },
+      {
+       "title": "25.2 The stable-marriage problem",
+       "page": 927
+      },
+      {
+       "title": "25.3 The Hungarian algorithm for the assignment problem",
+       "page": 936
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "VII Selected Topics",
+   "page": 964,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 965,
+     "sections": []
+    },
+    {
+     "title": "26 Parallel Algorithms",
+     "page": 969,
+     "sections": [
+      {
+       "title": "26.1 The basics of fork-join parallelism",
+       "page": 972
+      },
+      {
+       "title": "26.2 Parallel matrix multiplication",
+       "page": 998
+      },
+      {
+       "title": "26.3 Parallel merge sort",
+       "page": 1004
+      }
+     ]
+    },
+    {
+     "title": "27 Online Algorithms",
+     "page": 1025,
+     "sections": [
+      {
+       "title": "27.1 Waiting for an elevator",
+       "page": 1026
+      },
+      {
+       "title": "27.2 Maintaining a search list",
+       "page": 1030
+      },
+      {
+       "title": "27.3 Online caching",
+       "page": 1038
+      }
+     ]
+    },
+    {
+     "title": "28 Matrix Operations",
+     "page": 1060,
+     "sections": [
+      {
+       "title": "28.1 Solving systems of linear equations",
+       "page": 1060
+      },
+      {
+       "title": "28.2 Inverting matrices",
+       "page": 1077
+      },
+      {
+       "title": "28.3 Symmetric positive-definite matrices and least-squares approximation",
+       "page": 1084
+      }
+     ]
+    },
+    {
+     "title": "29 Linear Programming",
+     "page": 1098,
+     "sections": [
+      {
+       "title": "29.1 Linear programming formulations and algorithms",
+       "page": 1101
+      },
+      {
+       "title": "29.2 Formulating problems as linear programs",
+       "page": 1110
+      },
+      {
+       "title": "29.3 Duality",
+       "page": 1118
+      }
+     ]
+    },
+    {
+     "title": "30 Polynomials and the FFT",
+     "page": 1132,
+     "sections": [
+      {
+       "title": "30.1 Representing polynomials",
+       "page": 1134
+      },
+      {
+       "title": "30.2 The DFT and FFT",
+       "page": 1142
+      },
+      {
+       "title": "30.3 FFT circuits",
+       "page": 1152
+      }
+     ]
+    },
+    {
+     "title": "31 Number-Theoretic Algorithms",
+     "page": 1164,
+     "sections": [
+      {
+       "title": "31.1 Elementary number-theoretic notions",
+       "page": 1166
+      },
+      {
+       "title": "31.2 Greatest common divisor",
+       "page": 1174
+      },
+      {
+       "title": "31.3 Modular arithmetic",
+       "page": 1181
+      },
+      {
+       "title": "31.4 Solving modular linear equations",
+       "page": 1190
+      },
+      {
+       "title": "31.5 The Chinese remainder theorem",
+       "page": 1196
+      },
+      {
+       "title": "31.6 Powers of an element",
+       "page": 1201
+      },
+      {
+       "title": "31.7 The RSA public-key cryptosystem",
+       "page": 1206
+      },
+      {
+       "title": "★ 31.8 Primality testing",
+       "page": 1215
+      }
+     ]
+    },
+    {
+     "title": "32 String Matching",
+     "page": 1234,
+     "sections": [
+      {
+       "title": "32.1 The naive string-matching algorithm",
+       "page": 1237
+      },
+      {
+       "title": "32.2 The Rabin-Karp algorithm",
+       "page": 1240
+      },
+      {
+       "title": "32.3 String matching with finite automata",
+       "page": 1247
+      },
+      {
+       "title": "★ 32.4 The Knuth-Morris-Pratt algorithm",
+       "page": 1257
+      },
+      {
+       "title": "32.5 Suffix arrays",
+       "page": 1270
+      }
+     ]
+    },
+    {
+     "title": "33 Machine-Learning Algorithms",
+     "page": 1293,
+     "sections": [
+      {
+       "title": "33.1 Clustering",
+       "page": 1296
+      },
+      {
+       "title": "33.2 Multiplicative-weights algorithms",
+       "page": 1308
+      },
+      {
+       "title": "33.3 Gradient descent",
+       "page": 1317
+      }
+     ]
+    },
+    {
+     "title": "34 NP-Completeness",
+     "page": 1343,
+     "sections": [
+      {
+       "title": "34.1 Polynomial time",
+       "page": 1350
+      },
+      {
+       "title": "34.2 Polynomial-time verification",
+       "page": 1360
+      },
+      {
+       "title": "34.3 NP-completeness and reducibility",
+       "page": 1366
+      },
+      {
+       "title": "34.4 NP-completeness proofs",
+       "page": 1381
+      },
+      {
+       "title": "34.5 NP-complete problems",
+       "page": 1391
+      }
+     ]
+    },
+    {
+     "title": "35 Approximation Algorithms",
+     "page": 1423,
+     "sections": [
+      {
+       "title": "35.1 The vertex-cover problem",
+       "page": 1426
+      },
+      {
+       "title": "35.2 The traveling-salesperson problem",
+       "page": 1430
+      },
+      {
+       "title": "35.3 The set-covering problem",
+       "page": 1437
+      },
+      {
+       "title": "35.4 Randomization and linear programming",
+       "page": 1443
+      },
+      {
+       "title": "35.5 The subset-sum problem",
+       "page": 1449
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "VIII Appendix: Mathematical Background",
+   "page": 1466,
+   "chapters": [
+    {
+     "title": "Introduction",
+     "page": 1467,
+     "sections": []
+    },
+    {
+     "title": "A Summations",
+     "page": 1469,
+     "sections": []
+    },
+    {
+     "title": "A.1 Summation formulas and properties",
+     "page": 1469,
+     "sections": []
+    },
+    {
+     "title": "A.2 Bounding summations",
+     "page": 1475,
+     "sections": []
+    }
+   ]
+  },
+  {
+   "title": "B Sets, Etc.",
+   "page": 1484,
+   "chapters": [
+    {
+     "title": "B.1 Sets",
+     "page": 1484,
+     "sections": []
+    },
+    {
+     "title": "B.2 Relations",
+     "page": 1490,
+     "sections": []
+    },
+    {
+     "title": "B.3 Functions",
+     "page": 1493,
+     "sections": []
+    },
+    {
+     "title": "B.4 Graphs",
+     "page": 1497,
+     "sections": []
+    },
+    {
+     "title": "B.5 Trees",
+     "page": 1503,
+     "sections": []
+    }
+   ]
+  },
+  {
+   "title": "C Counting and Probability",
+   "page": 1514,
+   "chapters": [
+    {
+     "title": "C.1 Counting",
+     "page": 1514,
+     "sections": []
+    },
+    {
+     "title": "C.2 Probability",
+     "page": 1522,
+     "sections": []
+    },
+    {
+     "title": "C.3 Discrete random variables",
+     "page": 1529,
+     "sections": []
+    },
+    {
+     "title": "C.4 The geometric and binomial distributions",
+     "page": 1536,
+     "sections": []
+    },
+    {
+     "title": "★ C.5 The tails of the binomial distribution",
+     "page": 1543,
+     "sections": []
+    }
+   ]
+  },
+  {
+   "title": "D Matrices",
+   "page": 1557,
+   "chapters": [
+    {
+     "title": "D.1 Matrices and matrix operations",
+     "page": 1557,
+     "sections": []
+    },
+    {
+     "title": "D.2 Basic matrix properties",
+     "page": 1563,
+     "sections": []
+    }
+   ]
+  },
+  {
+   "title": "Bibliography",
+   "page": 1573,
+   "chapters": []
+  },
+  {
+   "title": "Index",
+   "page": 1599,
+   "chapters": []
+  }
+ ]
+}

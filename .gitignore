@@ -1,0 +1,20 @@
+# ── 版权受限：原著正文与英文原题，不随仓库分发 ──
+# CLRS《算法导论》第 4 版全书正文（自 PDF 抽取，2.6 MB）
+clrs_pages.txt
+# 英文原题抓取与候选筛选结果
+clrs_book.json
+clrs_exercises_raw.json
+clrs_alg_candidates.json
+clrs_alg_final.json
+# 含英文原文（en 字段）的翻译任务包与早期粗批次
+alg_jobs/
+book_batches/
+
+# ── 系统 / 编辑器垃圾 ──
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+__pycache__/
+*.pyc

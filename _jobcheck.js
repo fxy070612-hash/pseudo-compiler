@@ -1,0 +1,12 @@
+const fs=require('fs');
+const job=JSON.parse(fs.readFileSync(process.env.JOB,'utf8'));
+const out=JSON.parse(fs.readFileSync(process.env.OUT,'utf8'));
+const jrefs=job.items.map(i=>i.ref);
+const orefs=out.map(o=>o.ref);
+console.log('job items',jrefs.length,'| out items',out.length);
+console.log('job refs:',JSON.stringify(jrefs));
+console.log('out refs:',JSON.stringify(orefs));
+const miss=jrefs.filter(r=>orefs.indexOf(r)<0);
+const extra=orefs.filter(r=>jrefs.indexOf(r)<0);
+console.log('未处理(需丢弃或漏做):',JSON.stringify(miss));
+console.log('输出里多出来的:',JSON.stringify(extra));

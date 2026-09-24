@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>数据结构与算法 · 伪代码编译器与复杂度分析</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --line:#e4e7ec; --line2:#eef1f5;
+  --ink:#1f2430; --ink2:#5b6472; --ink3:#8b95a5;
+  --accent:#3b6ef5; --accent-soft:#eaf0ff;
+  --ok:#1a9e6a; --ok-soft:#e6f7ef; --warn:#c98a00; --warn-soft:#fff6e2; --bad:#d8452f; --bad-soft:#fdeceb;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
+  border-radius:8px;padding:6px 12px;transition:.15s}
+button:hover{border-color:#c9d2e3;background:#fbfcfe}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#2f61e6}
+button.ghost{background:transparent;border-color:transparent;color:var(--ink2)}
+button.ghost:hover{background:#eef1f6}
+input,textarea,select{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
+  border-radius:8px;padding:7px 10px;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.app{display:flex;flex-direction:column;height:100vh}
+/* 顶栏 */
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-weight:650;font-size:16px;white-space:nowrap}
+.brand small{font-weight:400;color:var(--ink3);font-size:12px}
+header .grow{flex:1}
+.tabs{display:flex;gap:2px;background:#f0f2f6;padding:3px;border-radius:10px}
+.tabs button{border:none;background:transparent;padding:5px 13px;border-radius:8px;color:var(--ink2);font-size:13px}
+.tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.08);font-weight:600}
+/* 主体 */
+main{flex:1;display:flex;min-height:0}
+aside{width:252px;flex:0 0 252px;background:#fff;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0}
+.side-sec{padding:12px 14px;border-bottom:1px solid var(--line2)}
+.side-sec h3{margin:0 0 8px;font-size:12px;color:var(--ink3);font-weight:600;letter-spacing:.04em}
+.prob-list,.sol-list{display:flex;flex-direction:column;gap:4px;overflow:auto}
+.prob-item,.sol-item{padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.prob-item:hover,.sol-item:hover{background:#f7f9fc}
+.prob-item.active,.sol-item.active{background:var(--accent-soft);border-color:#d5e0ff}
+.prob-title,.sol-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prob-meta,.sol-sub{font-size:11.5px;color:var(--ink3);margin-top:1px}
+.sol-head{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.badge{font-size:10.5px;padding:1px 6px;border-radius:999px;background:#eef1f6;color:var(--ink2);white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.side-sec.grow{flex:1;overflow:auto;min-height:0}
+.side-actions{display:flex;flex-wrap:wrap;gap:6px}
+/* 工作区 */
+.work{flex:1;display:flex;flex-direction:column;min-width:0;overflow:auto}
+.panes{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px;min-height:0}
+.pane{background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line2);background:#fcfdff}
+.pane-title{font-weight:650;font-size:13px}
+.pane-head .grow{flex:1}
+.pane-body{flex:1;overflow:auto;padding:12px;min-height:0}
+.pane-body.flush{padding:0}
+/* 编辑器 */
+.ed-wrap{position:relative;display:flex;flex:1;min-height:560px;background:#fff;
+  font-family:var(--mono);font-size:13px;line-height:1.62;overflow:hidden}
+.ed-gutter{flex:0 0 46px;padding:10px 8px 10px 0;text-align:right;color:#b6bfcd;background:#fafbfd;
+  border-right:1px solid var(--line2);overflow:hidden;white-space:pre;user-select:none;font-size:12px;line-height:21.06px}
+.ed-area{position:relative;flex:1;min-width:0}
+.ed-hl,.ed-input{position:absolute;inset:0;padding:10px 12px;margin:0;border:0;white-space:pre-wrap;word-break:normal;overflow-wrap:break-word;
+  font-family:var(--mono);font-size:13px;line-height:21.06px;tab-size:2}
+.ed-hl{pointer-events:none;background:transparent;color:var(--ink);overflow:hidden}
+.ed-input{background:transparent;color:transparent;caret-color:var(--ink);resize:none;border-radius:0;box-shadow:none!important}
+.ed-input::selection{background:#cfe0ff}
+.c-kw{color:#9b1fa0;font-weight:700;font-size:14px;letter-spacing:.1px;line-height:inherit}
+.c-kw-big{display:inline}.c-nu{color:#b76b01}.c-st{color:#0a8f5b}
+.c-cm{color:#9aa4b2;font-style:italic}.c-ar{color:#1f6feb}
+/* 代码输出 */
+pre.code{margin:0;padding:12px;font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre;color:#24292f}
+.dim{color:var(--ink3)}
+/* 卡片 */
+.card{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:10px;background:#fff}
+.card-title{font-size:12px;color:var(--ink3);font-weight:600;letter-spacing:.03em;margin-bottom:6px}
+.card-note{font-size:12px;color:var(--ink2);margin-top:4px;line-height:1.55}
+.big{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.big-main{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.big-tag{font-size:11px;background:var(--ok-soft);color:var(--ok);padding:2px 8px;border-radius:999px}
+.big-sub{font-size:12px;color:var(--ink3)}
+.fit-list{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.fit-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.fit-row.best .fit-name{font-weight:700;color:var(--ink)}
+.fit-name{width:96px;color:var(--ink2);font-family:var(--mono)}
+.fit-bar{flex:1;height:7px;background:#eef1f6;border-radius:999px;overflow:hidden}
+.fit-fill{height:100%;background:linear-gradient(90deg,#8fb2ff,#3b6ef5);border-radius:999px}
+.fit-r2{width:74px;text-align:right;color:var(--ink3);font-family:var(--mono)}
+.pat-name{font-size:13px;font-weight:600;margin-top:3px}
+/* 表格 */
+table.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+table.tbl th,table.tbl td{padding:7px 9px;border-bottom:1px solid var(--line2);text-align:left}
+table.tbl th{font-size:11.5px;color:var(--ink3);font-weight:600;background:#fafbfd;position:sticky;top:0}
+table.tbl tr:hover td{background:#fafbfd}
+td.mono,.mono{font-family:var(--mono)}
+td.ok{color:var(--ok);font-weight:600}
+td.bad{color:var(--bad);font-weight:600}
+.verdict{margin-top:11px;padding:9px 12px;border-radius:9px;font-size:12.5px}
+.verdict.ok{background:var(--ok-soft);color:#137a52}
+.verdict.bad{background:var(--bad-soft);color:#a8321f}
+/* 诊断 */
+.diag{font-size:12.5px;padding:6px 9px;border-radius:7px;margin-bottom:5px;font-family:var(--mono)}
+.diag.err{background:var(--bad-soft);color:#a8321f}
+.diag.warn{background:var(--warn-soft);color:#8a6100}
+.diag.ok{background:var(--ok-soft);color:#137a52}
+.comp-status{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:7px 10px;border-radius:8px;margin-top:8px}
+.comp-status.ok{background:var(--ok-soft);color:#137a52}
+.comp-status.warn{background:var(--warn-soft);color:#8a6100}
+.comp-status .cs-dot{font-weight:700}
+.comp-status .cs-text{line-height:1.5}
+.comp-detail{margin-top:7px}
+.comp-toggle{margin-top:5px;font-size:12px;color:var(--ink3);cursor:pointer;text-decoration:underline dotted;width:fit-content}
+.comp-toggle:hover{color:var(--ink)}
+.link-btn{background:none;border:0;color:var(--ink3);font-size:12px;padding:5px 2px 0;cursor:pointer;text-decoration:underline dotted;width:100%;text-align:left}
+.link-btn:hover{color:var(--ink)}
+.grade-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.reject-btn{background:#fff;border:1px solid var(--bad);color:var(--bad);font-weight:600;padding:7px 14px;border-radius:9px;cursor:pointer}
+.reject-btn:hover{background:var(--bad-soft)}
+.book-btn{background:linear-gradient(135deg,#fff7ed,#ffedd5)!important;border-color:#f6c99a!important}
+.book-btn.on{box-shadow:0 0 0 2px #f6c99a inset}
+.book-bar{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+#bookList{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:8px;align-items:start;min-width:0}
+#bookList .empty{grid-column:1/-1}
+.book-part{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink3);letter-spacing:.04em;margin:12px 0 2px}
+.book-ch{border:1px solid var(--line);border-radius:10px;background:#fff;min-width:0}
+/* 展开的章节独占整行：网格行高取该行最高项，若与折叠卡同处一行，另一列会留下整列空白 */
+#bookList .book-ch.open{grid-column:1/-1}
+/* 展开后内容用两栏多列排（不是 grid，避免行高互相牵制），宽度更适读、高度减半 */
+#bookList .book-ch.open .book-items{columns:2;column-gap:30px}
+#bookList .book-ch.open .book-it,#bookList .book-ch.open .book-sec{break-inside:avoid}
+#bookList .book-ch.open .book-sec{break-after:avoid}
+.book-ch-head{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:#fafbfd;position:sticky;top:-1px;z-index:2;border-radius:9px 9px 0 0}
+.book-ch-head:hover{background:#f3f6fb}
+.book-ch-num{font-family:var(--mono);font-size:12px;color:#b45309;background:#fff7ed;padding:2px 7px;border-radius:6px;border:1px solid #f6c99a}
+.book-ch-title{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.book-ch-n{font-size:11.5px;color:var(--ink3)}
+.book-items{padding:4px 12px 10px}
+.book-sec{font-size:11.5px;color:var(--ink3);margin:8px 0 4px;font-family:var(--mono)}
+.book-it{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line2)}
+.book-it input[type=checkbox]{flex:none;width:15px;height:15px;margin:3px 0 0;accent-color:var(--accent)}
+.book-it-main{flex:1 1 auto;min-width:0}
+.book-it-t{font-size:13px;font-weight:600}
+.book-it-s{font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.55;word-break:normal;overflow-wrap:break-word}
+.book-it-m{font-size:11px;color:var(--ink3);margin-top:3px;font-family:var(--mono);word-break:normal;overflow-wrap:break-word}
+.ana-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:10px}
+.ana-k{color:var(--ink3);font-size:11.5px}
+.ana-v{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.ana-tag{font-size:11px;background:var(--ok-soft);color:var(--ok);padding:2px 8px;border-radius:999px}
+.save-dot{font-size:11.5px;color:var(--ok);background:var(--ok-soft);padding:2px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;opacity:.9;transition:opacity .3s}
+.save-dot.busy{color:var(--ink3);background:#eef1f6}
+.rst-row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.rst-row.cur{border-color:var(--ok);background:var(--ok-soft)}
+.rst-main{flex:1;min-width:0}
+.rst-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rst-meta{font-size:11.5px;color:var(--ink3);margin-top:3px;font-family:var(--mono)}
+.empty{color:var(--ink3);font-size:12.5px;padding:10px 2px}
+pre.mini{margin:6px 0 0;font-family:var(--mono);font-size:12px;background:#f7f9fc;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all}
+/* 题目区 */
+.prob-card{background:#fff;border:1px solid var(--line);border-radius:12px;margin:14px 14px 0;overflow:hidden}
+.prob-card-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line2)}
+.prob-card-body{padding:12px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.field label{display:block;font-size:11.5px;color:var(--ink3);margin-bottom:4px}
+.field textarea{min-height:132px;font-size:13px;line-height:1.6;width:100%;max-width:100%;box-sizing:border-box;white-space:pre-wrap;word-break:normal;overflow-wrap:break-word;resize:vertical}
+.hidden{display:none!important}
+/* 可折叠小节 */
+.sec-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.sec-toggle{display:flex;align-items:center;gap:6px;flex:1;border:none;background:transparent;padding:0;text-align:left}
+.sec-toggle:hover{background:transparent}
+.sec-toggle .caret{color:var(--ink3);font-size:11px;transition:.16s;display:inline-block}
+.sec-toggle h3{margin:0;font-size:12px;color:var(--ink3);font-weight:600;letter-spacing:.04em}
+.sec-toggle.closed .caret{transform:rotate(-90deg)}
+button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;color:var(--ink2)}
+.sec-body.hidden{display:none}
+/* 侧栏题库入口 */
+.bank-btn{width:100%;display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:10px;font-weight:650;font-size:13.5px;
+  background:#f7f9fc;border:1px solid var(--line)}
+.bank-btn:hover{background:var(--accent-soft);border-color:#d5e0ff}
+.bank-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.bank-btn.on .bank-btn-n{background:rgba(255,255,255,.25);color:#fff}
+.bank-btn-ico{font-size:15px;line-height:1}
+.bank-btn-n{margin-left:auto;font-size:11.5px;background:#e7ecf5;border-radius:999px;padding:1px 8px;color:var(--ink2)}
+/* 题库 */
+.bank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px;padding:14px}
+.bank-card{border:1px solid var(--line);border-radius:14px;padding:16px 16px 13px;background:linear-gradient(180deg,#fff,#fbfcff);cursor:pointer;transition:.16s}
+.bank-card:hover{border-color:#c9d8ff;box-shadow:0 8px 22px rgba(59,110,245,.10);transform:translateY(-1px)}
+.bank-num{font-size:11.5px;color:var(--accent);font-weight:700;letter-spacing:.08em}
+.bank-title{font-size:21px;font-weight:750;letter-spacing:-.01em;margin:4px 0 8px;line-height:1.25}
+.bank-meta{font-size:12.5px;color:var(--ink2);display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+.bank-chip{background:#f1f4f9;border-radius:999px;padding:2px 9px;font-size:11.5px}
+.bank-chip.on{background:var(--ok-soft);color:var(--ok)}
+.bank-stmt{font-size:12.5px;color:var(--ink3);line-height:1.6;max-height:64px;overflow:hidden}
+.bank-foot{display:flex;gap:8px;margin-top:11px;align-items:center}
+/* 子标签 */
+.subtabs{display:flex;gap:3px;background:#f0f2f6;padding:3px;border-radius:9px;margin-bottom:10px}
+.subtabs button{border:none;background:transparent;padding:4px 12px;border-radius:7px;color:var(--ink2);font-size:12.5px}
+.subtabs button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+/* 评分 */
+.score-wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.score-ring{width:96px;height:96px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto;
+  background:conic-gradient(var(--accent) calc(var(--p)*1%), #eef1f6 0);}
+.score-ring>div{width:78px;height:78px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-size:26px;font-weight:750;line-height:1}
+.score-lab{font-size:11px;color:var(--ink3);margin-top:2px}
+.dim-list{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px}
+.dim-row{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.dim-name{width:88px;color:var(--ink2)}
+.dim-bar{flex:1;height:8px;background:#eef1f6;border-radius:999px;overflow:hidden}
+.dim-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#9dbaff,#3b6ef5)}
+.dim-fill.low{background:linear-gradient(90deg,#ffc98f,#e08a2f)}
+.dim-fill.bad{background:linear-gradient(90deg,#ffb3a7,#d8452f)}
+.dim-val{width:56px;text-align:right;font-family:var(--mono);color:var(--ink2)}
+.finding{font-size:12.5px;padding:7px 10px;border-radius:8px;margin-top:6px;line-height:1.55}
+.finding.error{background:var(--bad-soft);color:#a8321f}
+.finding.warn{background:var(--warn-soft);color:#8a6100}
+.finding.pass{background:var(--ok-soft);color:#137a52}
+.finding .hint2{display:block;color:var(--ink2);font-size:11.5px;margin-top:3px}
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(24,30,44,.42);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal{background:#fff;border-radius:14px;width:min(680px,94vw);max-height:88vh;overflow:auto;box-shadow:0 18px 48px rgba(16,24,40,.22)}
+.modal-head{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line2)}
+.modal-head h2{margin:0;font-size:15px}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:11px;min-width:0}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line2);background:#fcfdff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.hint{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.row{display:flex;align-items:center;gap:8px}
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:#1f2430;color:#fff;
+  padding:9px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:80}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:#a8321f}
+.toast.ok{background:#137a52}
+/* 自检 */
+.test-row{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.test-name{flex:0 0 250px;font-weight:600}
+.test-steps{flex:1;color:var(--ink2)}
+.step{font-family:var(--mono);font-size:11.5px;margin-top:2px}
+.step.pass{color:var(--ok)}.step.warn{color:var(--warn)}.step.fail{color:var(--bad)}
+@media (max-width:1080px){
+  .panes{grid-template-columns:1fr}
+  aside{width:210px;flex-basis:210px}
+  .prob-card-body{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">伪代码编译器 <small>数据结构与算法分析 · 1-based 数组 · 多解对照</small></div>
+    <div class="grow"></div>
+    <div class="tabs" id="tabs"></div>
+    <button class="ghost" id="btnAiCfg">⚙ AI 设置</button>
+  </header>
+
+  <main>
+    <aside>
+      <div class="side-sec">
+        <button class="bank-btn book-btn" id="btnBook">
+          <span class="bank-btn-ico">▤</span>
+          <span>书本习题</span>
+          <span class="bank-btn-n" id="bookCount">0</span>
+        </button>
+      </div>
+
+      <div class="side-sec">
+        <button class="bank-btn" id="btnBank">
+          <span class="bank-btn-ico">▦</span>
+          <span>题库</span>
+          <span class="bank-btn-n" id="bankCount">0</span>
+        </button>
+      </div>
+
+      <div class="side-sec" id="secProblem">
+        <div class="sec-head">
+          <button class="sec-toggle" id="tglProblem" title="折叠/展开"><span class="caret">▾</span><h3>当前题目</h3></button>
+          <button class="mini" id="btnNewProb" title="新建题目">＋</button>
+        </div>
+        <div class="sec-body" id="bodyProblem">
+          <div class="prob-list" id="probList"></div>
+          <div class="side-actions" style="margin-top:9px">
+            <button id="btnImportFile">导入文件</button>
+            <button id="btnExport">导出题库</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-sec grow" id="secSolution">
+        <div class="sec-head">
+          <button class="sec-toggle" id="tglSolution" title="折叠/展开"><span class="caret">▾</span><h3>解法（同题多解）</h3></button>
+          <button class="mini" id="btnAddSol" title="新增解法">＋</button>
+        </div>
+        <div class="sec-body" id="bodySolution">
+          <div class="sol-list" id="solList"></div>
+          <div class="side-actions" style="margin-top:9px">
+            <button id="btnDelSol">删除当前解法</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="work">
+      <!-- 题目信息 -->
+      <section class="prob-card">
+        <div class="prob-card-head">
+          <span class="pane-title">题目内容</span>
+          <div class="grow"></div>
+          <button id="btnAiExtract">AI 摘取题目</button>
+          <button id="btnPasteImg">粘贴图片</button>
+          <input type="file" id="fileProb" class="hidden" accept=".txt,.md,.markdown,.json,.py,.c,.cpp,.java,.js,image/*,.pdf" multiple />
+          <span class="hint" id="probHint">可直接手打，也可上传 txt / md / 图片 / PDF，AI 自动整理成完整题意</span>
+        </div>
+        <div class="prob-card-body">
+          <div class="field">
+            <label>题目（可继续修改）</label>
+            <textarea id="probStatement" placeholder="粘贴或手打题目描述……"></textarea>
+          </div>
+          <div class="field">
+            <label>标题 / 测试规模 n</label>
+            <input id="probTitle" placeholder="题目名称" />
+            <div class="row" style="margin-top:8px">
+              <input id="probSize" type="number" min="8" max="100000" step="8" />
+              <span class="hint">实测的最大规模</span>
+            </div>
+            <label style="margin-top:10px">AI 补充说明（可选）</label>
+            <input id="probNotes" placeholder="例如：要求 O(n log n)，用归并排序思想" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 题库视图 -->
+      <section class="prob-card hidden" id="bankView">
+        <div class="prob-card-head">
+          <span class="pane-title">题库</span>
+          <span class="hint" id="bankHint">点击卡片打开题目</span>
+          <div class="grow"></div>
+          <button id="btnBankNew" class="primary">新建题目</button>
+          <button id="btnBankImport">导入文件</button>
+        </div>
+        <div class="bank-grid" id="bankGrid"></div>
+      </section>
+
+      <!-- 编辑 + 结果 -->
+      <div class="panes">
+        <section class="pane">
+          <div class="pane-head">
+            <span class="pane-title">伪代码</span>
+            <div class="grow"></div>
+            <button id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
+            <button id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
+            <button id="btnGrade" class="primary">AI 测评打分</button>
+          </div>
+          <div class="ed-wrap">
+            <div class="ed-gutter" id="edGutter"></div>
+            <div class="ed-area">
+              <pre class="ed-hl" id="edHl"></pre>
+              <textarea class="ed-input" id="edInput" spellcheck="false" wrap="soft"></textarea>
+            </div>
+          </div>
+          <div class="pane-head" style="border-top:1px solid var(--line2);border-bottom:none">
+            <span class="hint" id="edStat"></span>
+            <span class="save-dot" id="saveDot">已自动保存</span>
+            <div class="grow"></div>
+            <button id="btnCompile">编译</button>
+            <button class="primary" id="btnCompileRun">编译并实测</button>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="pane-head">
+            <span class="pane-title" id="rightTitle">评测与复杂度</span>
+            <div class="grow"></div>
+            <span class="hint" id="entryHint"></span>
+          </div>
+          <div class="pane-body" id="paneBody">
+            <div id="tabAnalysis">
+              <div id="gradeBox"></div>
+              <div id="anaBox"></div>
+              <div id="diagBox" style="margin-top:6px"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- AI 设置 -->
+<div class="mask hidden" id="aiMask">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>AI 接口设置</h2>
+      <div class="grow" style="flex:1"></div>
+      <span class="hint">密钥只保存在本机浏览器</span>
+    </div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label>接口协议</label>
+          <select id="cfgProto">
+            <option value="openai">OpenAI 兼容（/chat/completions）</option>
+            <option value="anthropic">Anthropic Claude（/v1/messages）</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+        <div class="field"><label>模型名</label><input id="cfgModel" placeholder="deepseek-chat / gpt-4o-mini / claude-3-5-sonnet-latest" /></div>
+      </div>
+      <div class="field"><label>Base URL</label><input id="cfgBase" placeholder="https://api.deepseek.com/v1" /></div>
+      <div class="field"><label>API Key</label><input id="cfgKey" type="password" placeholder="sk-..." /></div>
+      <div class="grid2">
+        <div class="field"><label>温度</label><input id="cfgTemp" type="number" step="0.1" min="0" max="1.5" /></div>
+        <div class="field"><label>单次最大 tokens</label><input id="cfgTokens" type="number" min="512" max="32000" step="256" /></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>测评次数（独立评几次后综合）</label>
+          <select id="cfgRounds">
+            <option value="1">1 次（最快）</option>
+            <option value="2">2 次</option>
+            <option value="3" selected>3 次（推荐）</option>
+            <option value="4">4 次</option>
+            <option value="5">5 次（最稳）</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint">
+        常用预设：DeepSeek <code>https://api.deepseek.com/v1</code> · 硅基流动 <code>https://api.siliconflow.cn/v1</code> ·
+        智谱 <code>https://open.bigmodel.cn/api/paas/v4</code> · OpenAI <code>https://api.openai.com/v1</code> ·
+        本地 Ollama <code>http://localhost:11434/v1</code>（Key 可随便填）。<br />
+        浏览器直连需要该服务允许跨域（CORS）；若被拦截，请改用允许跨域的网关地址。
+      </div>
+      <div id="cfgTestOut" class="hint"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="btnTestApi">测试连接</button>
+      <button id="btnSaveCfg" class="primary">保存</button>
+      <button id="btnCloseCfg">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 驳回重审 -->
+<div class="mask hidden" id="rejectMask">
+  <div class="modal" style="width:min(620px,94vw)">
+    <div class="modal-head"><h2>驳回重审</h2><div class="grow" style="flex:1"></div><span class="hint" id="rejectScore"></span></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>你认为哪里判得不对？（越具体越好）</label>
+        <textarea id="rejectReason" style="min-height:110px" placeholder="例如：我的循环边界是对的，题目不要求处理空数组；这里的 minS 初值就是 0，不是漏初始化……"></textarea>
+      </div>
+      <div class="hint">组长会带着你的理由重新完整复核一遍：说得对就改判，说不通就维持并说明原因。</div>
+      <div id="rejectOut" class="hint" style="white-space:pre-wrap"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="btnRejectSend" class="primary">提交驳回</button>
+      <button id="btnRejectCancel">取消</button>
+      <button id="btnRejectClose" class="hidden">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 书本习题 -->
+<div class="mask hidden" id="bookMask">
+  <div class="modal" style="width:min(1240px,96vw);display:flex;flex-direction:column;overflow:hidden">
+    <div class="modal-head">
+      <h2>书本习题</h2>
+      <span class="hint" id="bookStat"></span>
+      <div class="grow" style="flex:1"></div>
+      <input id="bookSearch" placeholder="搜索题号 / 标题 / 关键字，如 heapsort、最短路" style="width:230px" />
+      <button id="btnBookClose">关闭</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;min-height:52vh;overflow:auto;flex:1 1 auto">
+      <div class="book-bar">
+        <button id="btnBookAll">全选当前列表</button>
+        <button id="btnBookNone">清空选择</button>
+        <span class="hint" id="bookSelHint">已选 0 题</span>
+      </div>
+      <div id="bookList"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="hint">加入后可在左侧「题库」里作答，题目内容可继续修改</span>
+      <div class="grow" style="flex:1"></div>
+      <button id="btnBookImport" class="primary">加入我的题库</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI 过程 -->
+<div class="mask hidden" id="aiRunMask">
+  <div class="modal" style="width:min(560px,92vw)">
+    <div class="modal-head"><h2 id="aiRunTitle">AI 正在工作…</h2></div>
+    <div class="modal-body"><div id="aiRunLog" style="font-family:var(--mono);font-size:12px;max-height:44vh;overflow:auto"></div></div>
+    <div class="modal-foot"><button id="btnAiRunClose">后台继续</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>/*__BOOK__*/</script>
+<script>/*__CORE__*/</script>
+<script>/*__UI__*/</script>
+</body>
+</html>

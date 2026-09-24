@@ -1,0 +1,32 @@
+[
+ {
+  "ref": "14.5-2",
+  "chapter": "14",
+  "chapterTitle": "Dynamic Programming",
+  "section": "14.5",
+  "page": 538,
+  "kind": "simulate",
+  "title": "用给定概率构造最优二叉搜索树",
+  "statement": "给定 n = 7 个关键字以及如下的搜索概率（关键字 k_i 的下标 i 从 1 开始，p_i 与 q_i 均为给定数据）：p_1 = 0.04，p_2 = 0.06，p_3 = 0.08，p_4 = 0.02，p_5 = 0.10，p_6 = 0.12，p_7 = 0.14；q_0 = 0.06，q_1 = 0.06，q_2 = 0.06，q_3 = 0.06，q_4 = 0.05，q_5 = 0.05，q_6 = 0.05，q_7 = 0.05。请用 OPTIMAL-BST 的递推式逐步计算 e[i, j]、w[i, j] 与 root[i, j]（下标均从 1 开始，1 ≤ i ≤ j ≤ n），并由此确定这 n = 7 个关键字的最优二叉搜索树的期望搜索代价 cost 与树的结构（即每个子树的根 root[i, j]，最终给出整棵树）。",
+  "entry": "optimal_bst",
+  "inputs": "有序关键字集合 k_1 < k_2 < … < k_7 及搜索概率 p_1, p_2, … , p_7 与 q_0, q_1, … , q_7",
+  "outputs": "期望搜索代价 cost = e[1, n] 以及最优二叉搜索树的结构（各子树的根 root[i, j]）",
+  "hint": "按子问题长度 l = 1, 2, … , n 自底向上填表：先算 w[i, j] = w[i, j − 1] + p_j + q_j，再对每个 i ≤ r ≤ j 取 e[i, r − 1] + e[r + 1, j] + w[i, j] 的最小值确定 root[i, j]（约定空子树的 e 为 q 值）。",
+  "note": "书上原题以表格形式给出 p_i 与 q_i 的取值，本题按标准题意将其逐项列出；题目只要求手算并给出代价与树的形状，不需要写出代码。"
+ },
+ {
+  "ref": "14.5-4",
+  "chapter": "14",
+  "chapterTitle": "Dynamic Programming",
+  "section": "14.5",
+  "page": 538,
+  "kind": "implement",
+  "title": "用 Knuth 优化把 OPTIMAL-BST 改到 Θ(n²)",
+  "statement": "Knuth 证明了：最优子树的根总是可以取成满足 root[i, j − 1] ≤ root[i, j] ≤ root[i + 1, j]（对一切 1 ≤ i < j ≤ n）。请利用这一性质改写 OPTIMAL-BST 过程，使得它的运行时间为 Θ(n²)。",
+  "entry": "optimal_bst_knuth",
+  "inputs": "关键字个数 n、概率序列 p_1..p_n 与 q_0..q_n（下标均从 1 开始）",
+  "outputs": "最优二叉搜索树的期望搜索代价 e[1, n] 与根表 root[i, j]",
+  "hint": "在原有的按长度自底向上填表中，把候选根 r 的枚举范围由 [i, j] 收缩为 [root[i, j − 1], root[i + 1, j]]，并注意处理好 i = j 以及子区间为空（root 未定义）时的边界。",
+  "note": "关键是把枚举根的区间收缩到 Knuth 不等式给出的范围内，从而把每个子问题求根的代价降为常数均摊。"
+ }
+]

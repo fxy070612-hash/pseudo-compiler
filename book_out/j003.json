@@ -1,0 +1,17 @@
+[
+ {
+  "ref": "3.1-2",
+  "chapter": "3",
+  "chapterTitle": "Characterizing Running Times",
+  "section": "3.1",
+  "page": 90,
+  "kind": "analyze",
+  "title": "SELECTION-SORT 的运行时间分析",
+  "statement": "采用与插入排序下界分析类似的推理方式，分析习题 2.2-2 中的 SELECTION-SORT 算法的运行时间。SELECTION-SORT 把数组 A[1..n]（数组下标从 1 开始）排成升序：第 i 趟（i = 1, 2, …, n – 1）先在子数组 A[i..n] 中找出最小的元素，再把它与 A[i] 交换。请像书中分析 INSERTION-SORT 那样，写出 SELECTION-SORT 的伪代码，统计它执行的基本操作次数（关键是比较次数与交换次数），对 n 求和，并给出该算法运行时间的渐近表达式（用 Θ 记号表示）。",
+  "entry": "selection_sort",
+  "inputs": "数组 A[1..n]（n 个可比较的元素，数组下标从 1 开始）",
+  "outputs": "排成升序的数组 A[1..n]，以及该算法运行时间关于 n 的渐近表达式（用 Θ 记号表示）",
+  "hint": "先数出第 i 趟在 A[i..n] 中找最小元素需要做多少次比较，再把 i 从 1 到 n – 1 各趟的代价求和，得到 Θ(n²)。",
+  "note": ""
+ }
+]
