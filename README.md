@@ -1,8 +1,33 @@
-# 伪代码编译器 · 单文件网页版（内置《算法导论》习题库）
+# 伪代码编译器 · 单文件网页版
 
-一个**单文件、零外部依赖**的伪代码编译器：在浏览器里写伪代码 → 编译成可运行代码 → 静态推导 + 运行实测复杂度 → 多解法对拍 → 可选接入 AI 做题目整理与多评审评测。
+在浏览器里写伪代码 → 编译成可运行代码 → 复杂度静态推导 + **运行实测** → 多解对拍 → 可选 AI 评测。
+内置《算法导论》第 4 版 **35 章 / 345 道**可编程练习题（中文题意）。
 
-**打开方式**：双击 `伪代码编译器.html` 即可。无服务器、无安装、无构建步骤、不联网也能用（只有 AI 功能需要自备 API Key）。
+## ⬇️ 怎么用
+
+### 1. 在线直接打开（什么都不用下载）
+
+**<https://fxy070612-hash.github.io/pseudo-compiler/>**
+
+> 如果返回 404，说明仓库还没开启 Pages：仓库 `Settings ▸ Pages ▸ Source` 选 **Deploy from a branch** → 分支 `main` → 目录 `/ (root)` → Save，等约 1 分钟即可。
+
+### 2. 下载到本机（离线可用，推荐）
+
+- **只要一个文件**：打开 [`伪代码编译器.html`](https://github.com/fxy070612-hash/pseudo-compiler/blob/main/%E4%BC%AA%E4%BB%A3%E7%A0%81%E7%BC%96%E8%AF%91%E5%99%A8.html) → 点右上角 **⬇ Download raw file** → 双击打开就能用。
+  （695 KB，离线可用、无需安装、无服务器、零外部依赖，Edge / Chrome 均可）
+- **想要源码**：点 **`Code ▸ Download ZIP`**（约 2.3 MB，含全部源码、构建脚本与数据）。
+
+> **只用不开发的话，你只需要上面那一个 HTML 文件**。仓库里其余都是源码、构建脚本和数据，不必下载。
+
+### 3. 想改源码
+
+下载 ZIP → 改 `shell.html`（骨架/CSS）、`ui.js`（界面层）、`core_py.js`（编译内核）→ 按下面「构建」重新生成单文件。
+
+### 第一次打开的提示
+
+- **开箱可用**：伪代码编译、复杂度分析、多解对拍、书本习题库都不需要联网、不需要配置。
+- **AI 功能需要自备 API Key**：右上角 `⚙ AI 设置` 里填 Base URL / 模型 / Key。Key 只保存在本机浏览器 localStorage，不会上传、也不会随仓库分发。不填也不影响其他功能。
+- 本地改过文件后如果界面没变，**Ctrl+F5** 强刷。
 
 ## 功能
 
@@ -31,7 +56,7 @@
 | Gemini | https://generativelanguage.googleapis.com | Gemini | gemini-1.5-flash |
 | 本地 Ollama | http://localhost:11434/v1 | OpenAI 兼容 | qwen2.5:14b |
 
-Key 只保存在本机浏览器 localStorage，不会写进任何文件、也不会随本仓库分发。浏览器直连需要服务端允许跨域（CORS），被拦就换允许跨域的网关。
+浏览器直连需要服务端允许跨域（CORS），被拦就换允许跨域的网关。
 
 ## 伪代码语法速查
 
@@ -79,6 +104,7 @@ python3 _qa2.py                  # 题库体检：题数 345 / 章节 35 / 问�
 | 路径 | 说明 |
 | --- | --- |
 | `伪代码编译器.html` | **成品**（单文件，双击即用） |
+| `index.html` | GitHub Pages 入口（自动跳转到上面的成品，不是应用本体） |
 | `shell.html` | 页面骨架与样式（含 `/*__BOOK__*/`、`/*__CORE__*/`、`/*__UI__*/` 三个注入位） |
 | `ui.js` | 界面层：题目／多解／题库／书本习题面板／AI 评测 |
 | `core_py.js` | 编译内核：词法→语法→语义→Python 目标码→复杂度代数→沙箱解释器 |
@@ -91,6 +117,11 @@ python3 _qa2.py                  # 题库体检：题数 345 / 章节 35 / 问�
 
 **未随仓库分发**（`.gitignore` 已排除）：`clrs_pages.txt`（原著全书正文）、`clrs_book.json` / `clrs_exercises_raw.json` / `clrs_alg_candidates.json`（英文原题抓取）、`alg_jobs/` 与 `book_batches/`（含英文原文 `en` 字段的任务包）。
 因此 `_pdf*.py`、`_cls.py`、`_jobs.py` 这几个「从 PDF 抽题 → 切翻译批次」的脚本克隆后无法直接运行；`_bookbuild.py` 与 `_mk.js` 可以正常跑。
+
+## 下载打不开 / 很慢？
+
+- `raw.githubusercontent.com` 的直链在**部分网络（含国内）会被墙**，这是已知情况，不是仓库问题。请改用 **`Code ▸ Download ZIP`**（走 `codeload.github.com`，实测可用）。
+- 在线版走的是 GitHub Pages，域名是 `fxy070612-hash.github.io`，与 `raw` 不是同一个域名，通常可用。
 
 ## 关于书本习题数据的版权说明
 
