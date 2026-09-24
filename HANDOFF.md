@@ -213,3 +213,36 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
 - 生成代码目标：**Python（标准 0-based 数组）**，但伪代码语言里数组**一律 1-based**；
 - 评分过程不必输出大量进度文字，只给结果；
 - 改完 UI 提醒用户 **Ctrl+F5** 强刷。
+
+## 9. GitHub 仓库（2026-09-24 建立）
+
+- 仓库：**https://github.com/fxy070612-hash/pseudo-compiler**（public，默认分支 `main`）
+- remote：`origin = git@github.com:fxy070612-hash/pseudo-compiler.git`（SSH）
+- 提交身份（仓库级）：`embar <3250102869@zju.edu.cn>`（与用户 math-hut 一致；想换成 GitHub noreply 邮箱就改 `git config user.email`）
+- **push 前必读**：本机 `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` 是坏软链，裸 `ssh` 会失败。
+  已在仓库级固定绕过：`git config core.sshCommand "ssh -F /dev/null -i ~/.ssh/github_ed25519 -o IdentitiesOnly=yes"`
+  密钥对在 `~/.ssh/github_ed25519`（公钥已加到账号）；github.com 已写入 `known_hosts`。
+- **推送流程**：`git add -A && git commit -m "..." && git push`（`main` 已跟踪 `origin/main`）。
+
+### 9.1 入库范围（.gitignore 的取舍）
+
+已上传 **94 个文件 / 2.31 MB**：全部代码、成品 `伪代码编译器.html`、中文题库数据（`book_data.*`、`book_out/`）。
+
+**刻意不上传**（本地文件仍在，不影响构建与验证）：
+
+| 排除项 | 原因 |
+|---|---|
+| `clrs_pages.txt`（2.6 MB） | 原著《算法导论》全书正文，公开仓库有版权风险 |
+| `clrs_book.json` / `clrs_exercises_raw.json` / `clrs_alg_candidates.json` / `clrs_alg_final.json` | 英文原题抓取与候选筛选（原文文本） |
+| `alg_jobs/` / `book_batches/` | 任务包含 `en` 英文字段 |
+
+> 后果：`_pdf*.py`、`_cls.py`、`_jobs.py`（PDF→抽题→切批次）克隆后跑不了；`_bookbuild.py`、`_mk.js`
+> 与全部回归脚本可正常运行，README 已写明。
+> `book_out/` 是纯中文翻译成品（无 `en` 字段），保留是为了让 `_bookbuild.py` 克隆后仍可用。
+
+### 9.2 远程核对（已实跑）
+
+- 本地 `HEAD` 与 `origin/main` SHA 一致；远程 94 文件 / 2.31 MB；版权文件确认未混入。
+- 经 API 取回远程成品与本地逐字节比对：**695,328 字节、md5 `f654fca7…`，完全一致**（含本轮排版修复，无旧值 `940px`、外部依赖 0）。
+- ⚠️ `raw.githubusercontent.com` 在本机网络下**超时**（`github.com` 与 `api.github.com` 正常）；取文件请用 API `contents` 接口或 `git clone`。
+- ⚠️ 推完记得同步桌面那份成品（第 6 节第 2 条）——**用户看的是桌面**，仓库更新不等于他看见了。
