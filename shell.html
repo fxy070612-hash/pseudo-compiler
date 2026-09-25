@@ -75,7 +75,10 @@ aside{width:252px;flex:0 0 252px;background:#fff;border-right:1px solid var(--li
 .ed-hl{pointer-events:none;background:transparent;color:var(--ink);overflow:hidden}
 .ed-input{background:transparent;color:transparent;caret-color:var(--ink);resize:none;border-radius:0;box-shadow:none!important}
 .ed-input::selection{background:#cfe0ff}
-.c-kw{color:#9b1fa0;font-weight:700;font-size:14px;letter-spacing:.1px;line-height:inherit}
+/* ⚠ 高亮层(.ed-hl)与输入层(.ed-input)必须字宽完全一致，否则光标会越偏越多：
+   这里只能改颜色/字重/字形，**绝不能改 font-size、letter-spacing、font-family、padding**。
+   等宽字体里 bold 不改变字宽，所以 font-weight 是安全的；font-size/letter-spacing 不是。 */
+.c-kw{color:#9b1fa0;font-weight:700}
 .c-kw-big{display:inline}.c-nu{color:#b76b01}.c-st{color:#0a8f5b}
 .c-cm{color:#9aa4b2;font-style:italic}.c-ar{color:#1f6feb}
 /* 代码输出 */
@@ -379,6 +382,11 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
             <div class="grow"></div>
             <button id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
             <button id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
+            <select id="baseSel" title="数组下标基准：决定起步模板写法与 AI 的判分口径（编译器两种都支持，按你的声明自动识别）"
+                    style="font-size:12.5px;padding:3px 6px">
+              <option value="1">数组 1-based</option>
+              <option value="0">数组 0-based</option>
+            </select>
             <button id="btnGrade" class="primary">AI 测评打分</button>
           </div>
           <div class="ed-wrap">

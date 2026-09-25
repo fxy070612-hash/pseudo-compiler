@@ -8,6 +8,13 @@
   var OLD_KEYS = ['pseudo-course-workbench-v3', 'pseudo-course-workbench-v2', 'pseudo-course-workbench'];
   var WRITEKEY = 'pseudo-course-workbench-lastwrite';
   var CFGKEY = 'pseudo-ai-config-v1';
+  /* 数组下标基准：1（默认）或 0。只影响「起步模板写法 / 输入规格说明 / AI 判分口径」；
+     编译器本身两种都支持——它按声明（A[1..n] 还是 A[0..n-1]）自动识别每个数组的基准。 */
+  var BASEKEY = 'pseudo-array-base';
+  function arrayBase() { try { return localStorage.getItem(BASEKEY) === '0' ? 0 : 1; } catch (e) { return 1; } }
+  function setArrayBase(b) { try { localStorage.setItem(BASEKEY, b === 0 ? '0' : '1'); } catch (e) { } }
+  function baseRange(name) { return arrayBase() === 0 ? (name + '[0..n-1]') : (name + '[1..n]'); }
+  function baseText() { return arrayBase() === 0 ? '0-based（A[0] 是第一个元素）' : '1-based（A[1] 是第一个元素）'; }
   var ed = null;
   var state = { problems: [], currentId: null, tab: 'analysis', gradeTab: 'overview', diagOpen: false, banks: [], bootKey: null, bookSel: {}, bookOpen: {}, bookQ: '' };
 
@@ -437,7 +444,7 @@
     this.gutter.textContent = g;
     this.hl.innerHTML = highlight(this.ta.value) + '\n';
     var st = $('edStat');
-    if (st) st.textContent = lines + ' 行 · ' + this.ta.value.length + ' 字符 · 数组下标从 1 开始';
+    if (st) st.textContent = lines + ' 行 · ' + this.ta.value.length + ' 字符 · 数组下标从 ' + (arrayBase() === 0 ? '0' : '1') + ' 开始';
   };
   function updateUndo() {
     if (!ed) return;
@@ -600,7 +607,7 @@
     c4.appendChild(el('div', 'card-title', '接口契约（自动生成测试数据用）'));
     c4.appendChild(el('div', 'card-note', '入口函数：' + (res.entry || '—')));
     res.inputSpec.forEach(function (sp) {
-      var kindName = { array: '数组（1-based）', matrix: '二维数组（1-based）', scalar: '整数' }[sp.kind] || sp.kind;
+      var kindName = { array: '数组（' + arrayBase() + '-based）', matrix: '二维数组（' + arrayBase() + '-based）', scalar: '整数' }[sp.kind] || sp.kind;
       c4.appendChild(el('div', 'card-note', '输入 ' + sp.name + '：' + kindName + (sp.dims && sp.dims.length ? ' 规模 ' + sp.dims.join(' × ') : '')));
     });
     c4.appendChild(el('div', 'card-note', '输出：' + ((res.outputs || []).join(', ') || '（就地修改的数组）')));
@@ -634,7 +641,7 @@
     '【工作方式】',
     '1. 先自己独立判断：算法思路对不对？关键步骤（初始化、循环边界、递推/转移、终止条件）对不对？边界（空、单元素、全负、重复、极值、越界）考虑了没有？',
     '2. 再逐条审视评审意见：哪些是真问题、哪些是误报（例如把格式或符号写法当成错误）、哪些评审漏掉了、哪些评分明显偏高或偏低。',
-    '3. **不要简单取平均**。多数评审判错而你判断正确，就按正确的判；多数评审漏掉真实缺陷（如数组下标从 0 开始、边界漏一项、递推少一项、未初始化），要指出并扣分。',
+    '3. **不要简单取平均**。多数评审判错而你判断正确，就按正确的判；多数评审漏掉真实缺陷（如循环边界漏一项、递推少一项、未初始化、下标越界），要指出并扣分。',
     '4. 同样**完全不在意格式与记号**：缩进、拼写、大小写、中英文混用、标点、有没有 end、写成 Python/C 风格都不扣分；**符号写法（= 还是 ←、A(1..n) 还是 A[1..n]、自然语言描述第 i 个元素等）也不算问题**；语法不完全正确但思路对，依然算对。',
     '5. 复核时若发现某位评审因为「符号写法 / 记号不规范」而扣分，要把它列为**不认可的判断**并恢复分数。',
     '6. 只有确实找到逻辑错误才判低分；找不到问题时不要为了显得严格而硬扣分。',
@@ -656,6 +663,7 @@
     parts.push(String(p.statement || p.title || '（未填写题目，请按标题推测）').trim());
     if (p.notes) parts.push('题目要求：' + p.notes);
     if (extra && extra.requireTime) parts.push('时间复杂度要求（从题目识别）：' + extra.requireTime);
+    parts.push('数组下标基准（学生当前设置）：' + baseText() + '。两种写法都算对，不要因为基准选择而扣分。');
     parts.push('');
     parts.push('【学生伪代码】');
     parts.push(fence(s.code || '（空）'));
@@ -1407,7 +1415,7 @@
     var ins = String(it.inputs || '');
     var params = [];
     var m = ins.match(/[A-Za-z][A-Za-z0-9]*\s*\[1\.\.n\]/g) || [];
-    m.forEach(function (p) { var nm = p.split('[')[0].trim(); if (params.indexOf(nm) < 0) params.push(nm + '[1..n]'); });
+    m.forEach(function (p) { var nm = p.split('[')[0].trim(); if (params.indexOf(nm) < 0) params.push(baseRange(nm)); });
     (ins.match(/(?:^|[，,、])\s*([a-zA-Z][A-Za-z0-9]*)\s*(?=[，,、]|$)/g) || []).forEach(function (p) {
       var nm = p.replace(/[，,、]/g, '').trim();
       if (/^(n|m|k|x|y|w|t|target|key)$/i.test(nm) && params.indexOf(nm) < 0) params.push(nm);
@@ -1442,7 +1450,7 @@
     }
     lines.push('function ' + fn + '(' + params.join(', ') + ')');
     lines.push('  ans = 0');
-    lines.push('  // TODO: 在这里写你的算法（数组下标从 1 开始）');
+    lines.push('  // TODO: 在这里写你的算法（数组下标从 ' + (arrayBase() === 0 ? '0' : '1') + ' 开始）');
     lines.push('  return ans');
     lines.push('end');
     return joinLines(lines);
@@ -1556,6 +1564,16 @@
     bindToggle($('tglProblem'), $('bodyProblem'), 'sec-problem');
     bindToggle($('tglSolution'), $('bodySolution'), 'sec-solution');
     bindToggle($('tglSync'), $('bodySync'), 'sec-sync');
+    /* 数组下标基准切换：只改「起步模板写法 + AI 判分口径」，不动学生已有的代码 */
+    var bsel = $('baseSel');
+    if (bsel) {
+      bsel.value = String(arrayBase());
+      bsel.onchange = function () {
+        setArrayBase(bsel.value === '0' ? 0 : 1);
+        toast('数组下标已切到 ' + baseText() + '（影响新插入的起步模板与 AI 判分口径；编译器按你的声明自动识别，两种都支持）');
+        if (ed) ed.render();
+      };
+    }
   }
 
   function doCompile(measure) {

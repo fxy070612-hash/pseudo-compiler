@@ -1728,10 +1728,20 @@
       var spA = inputSpec[i];
       if (spA.kind !== 'array' && spA.kind !== 'matrix') continue;
       var dtA = spA.dims[0];
-      if (!dtA || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(dtA)) continue;
-      if (paramNames.indexOf(dtA) >= 0) continue;
-      spA.inferredName = dtA;
-      for (var qA = 0; qA < inputSpec.length; qA++) if (inputSpec[qA].name === dtA) inputSpec[qA].inferred = true;
+      /* dims 存的是上界表达式。纯标识符（A[1..n]）直取；0-based 惯用写法 (n - 1) 也要认出来，
+         否则下面「n = len(A)」这句不会生成，规模变量 n undefined，循环一次都不跑
+         （这正是 0-based 伪代码运行结果为 0 的根因）。
+         只认「标识符 ± 常数」，不认 2n、(n*m) 这类——那些 len(A) 推不出规模，会算错。 */
+      var dtName = null;
+      if (dtA && /^[A-Za-z_][A-Za-z0-9_]*$/.test(dtA)) dtName = dtA;
+      else if (dtA) {
+        var dm = /^\(?\s*([A-Za-z_][A-Za-z0-9_]*)\s*([-+])\s*(\d+)\s*\)?$/.exec(String(dtA).trim());
+        if (dm) dtName = dm[1];
+      }
+      if (!dtName) continue;
+      if (paramNames.indexOf(dtName) >= 0) continue;
+      spA.inferredName = dtName;
+      for (var qA = 0; qA < inputSpec.length; qA++) if (inputSpec[qA].name === dtName) inputSpec[qA].inferred = true;
     }
 
     /* 函数体内声明的数组：避免主流程重复声明造成遮蔽 */
@@ -2905,8 +2915,11 @@
     for (i = 0; i < specs.length; i++) {
       var s = specs[i];
       if (s.kind === 'array') {
-        var len = dimValue(s.dims[0], size, inputs);
-        inputs[s.name] = genArray(len, rng, entryName, s);
+        var abase = (s.base === 0) ? 0 : 1;
+        /* dims 里存的是「上界表达式」：A[1..n] → "n"，A[0..n-1] → "(n - 1)"。
+           元素个数 = 上界 - 基准 + 1，所以 0-based 要 +1，1-based 恰好等于上界。 */
+        var len = dimValue(s.dims[0], size, inputs) - abase + 1;
+        inputs[s.name] = genArray(len, rng, entryName, s, abase);
       } else if (s.kind === 'matrix') {
         var r = dimValue(s.dims[0], size, inputs), c = dimValue(s.dims[1], size, inputs);
         var m = [];
@@ -2926,17 +2939,29 @@
     }
     return inputs;
   }
-  function genArray(len, rng, fname, spec) {
+  /* 生成测试数组。两条路径的约定**不一样**，别混：
+   · Python 目标路径（pyGenerateInput → 实测/样例）：下标由代码生成阶段平移（A[i] → a[i-base]），
+     数组必须**从 0 放满 len 个**，长度正好 len —— 因为那里用 `n = len(A)` 推规模。
+     所以那条路径**不传 base**（start=0），行为与旧版完全一致。
+   · 伪代码解释器路径（generateInput → 直接按 A[i] 访问）：1-based 需要下标 0 占位（长度 len+1），
+     0-based 则不能占位（长度 len）。这条路径传 base。
+   base 未传（undefined）→ start=0，等同旧行为。 */
+  function genArray(len, rng, fname, spec, base) {
     var f = String(fname || '').toLowerCase(), i, a = [];
+    var start = (base === 1) ? 1 : 0;   // 数据起始下标：仅 1-based 伪代码路径留占位
     if (/perm|shuffle|randomiz/.test(f)) {
-      for (i = 1; i <= len; i++) a.push(i);
-      for (i = len - 1; i > 0; i--) { var j = rndInt(rng, 0, i), t = a[i]; a[i] = a[j]; a[j] = t; }
+      a = new Array(start + len);
+      for (i = 0; i < len; i++) a[start + i] = i + 1;
+      for (i = len - 1; i > 0; i--) { var j = rndInt(rng, 0, i), t = a[start + i]; a[start + i] = a[start + j]; a[start + j] = t; }
+      if (start === 1) a[0] = rndInt(rng, 1, Math.max(2, len));
       return a;
     }
     var lo = -99, hi = 99;
     if (/sum|max|min|subarray|profit|stock/.test(f)) { lo = -40; hi = 40; }
     if (/posit|weight|value|cost|price/.test(f)) { lo = 1; hi = 60; }
-    for (i = 0; i < len; i++) a.push(rndInt(rng, lo, hi));
+    a = new Array(start + len);
+    for (i = 0; i < len; i++) a[start + i] = rndInt(rng, lo, hi);
+    if (start === 1) a[0] = rndInt(rng, lo, hi);
     return a;
   }
 
@@ -2950,6 +2975,7 @@
       var d0 = sp.dims[0];
       var v0 = (d0 && inputs[d0] !== undefined) ? inputs[d0] : (d0 && /^[A-Za-z_]/.test(String(d0)) && inputs[String(d0)] !== undefined ? inputs[String(d0)] : size);
       if (sp.kind === 'array') {
+        // 注意：这里**不传 base** —— Python 目标路径靠 n = len(A) 推规模，数组必须正好 len 个
         inputs[sp.name] = genArray(v0, rng, entryName, sp);
       } else if (sp.kind === 'matrix') {
         var d1 = sp.dims[1];
