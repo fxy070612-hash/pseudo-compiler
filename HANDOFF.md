@@ -591,3 +591,20 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
 同时发现一个**尚未修的方言缺口**：函数内部**局部数组声明**（`M[1..g] : int`）生成的 Python 里
 没有创建列表 → 运行时报 `NameError: name 'M' is not defined`（实测）。所以「用局部数组收集子数组」
 的写法目前跑不了；要在应用里跑通 SELECT，得改成**原地划分**（只用 swap，不新建数组）。下次可考虑补支持。
+
+### 15.6 选 Python 引擎就直接跑 Python 源码 + 红线跟随滚动（2026-09-24）
+
+用户反馈两点，都是设计问题：
+
+1. 「我不是可以选择 python 还是伪代码吗，我既然选了 python，那就对的啊」
+   —— 原来的实现里，选 Python 只是换**执行端**，代码仍必须先过伪代码编译器，
+   于是用户写 Python 时永远卡在「编译未通过」，这是错的。
+   修法：`pyMode = (引擎===python) && pythonMarkers(代码).length>=2 && pySignature(代码)`；
+   命中时**直接把用户的 Python 源码发给执行端**（`entry` 从 `def 名字(...)` 解析），
+   出题签名也用真实的 `名字(参数…)`，报错行号就是源码行号（不再做伪代码映射）。
+   实测：贴用户的 SELECT（Python）→ 「实测检查（Python · 服务器真跑）· 通过 0/3」，
+   不再被编译器拦住；顺带发现他的代码末尾 `//时间复杂度` 在 Python 里是语法错误（该用 `#`）。
+2. 「红线随着我上下滑动不会动」—— `#edMarks` 层没有同步 textarea 的 scrollTop。
+   修法：在 Editor 的 scroll 监听里 `marks.style.transform = translateY(-scrollTop)`，
+   标红后也按当前滚动位置摆正。实测：滚动后 transform = translateY(-8px) ✅。
+   另：`loadError` 时也从 traceback 取真实行号（原来固定标第 1 行）。

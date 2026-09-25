@@ -4523,6 +4523,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     this.ta = $('edInput');
     this.gutter = $('edGutter');
     this.hl = $('edHl');
+    this.marks = $('edMarks');
     this.history = [''];
     this.index = 0;
     this.timer = null;
@@ -4550,6 +4551,8 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       self.gutter.scrollTop = self.ta.scrollTop;
       self.hl.scrollTop = self.ta.scrollTop;
       self.hl.scrollLeft = self.ta.scrollLeft;
+      /* 错误标记层必须一起滚，否则红线会钉在屏幕上不动 */
+      if (self.marks) self.marks.style.transform = 'translateY(' + (-self.ta.scrollTop) + 'px)';
     });
     this.ta.addEventListener('keydown', function (e) {
       var mod = e.ctrlKey || e.metaKey;
@@ -5898,6 +5901,15 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
 
   function syncToken() { var c = syncCfg(); return String((c && c.token) || ''); }
 
+  /* 用户选了 Python 引擎、而且写的确实是 Python：直接按 Python 源码跑，不该再要求过伪代码编译器 */
+  function pySignature(code) {
+    var m = /(?:^|\n)def\s+([A-Za-z_]\w*)\s*\(([^)]*)\)/.exec(String(code || ''));
+    if (!m) return null;
+    var params = m[2].split(',').map(function (x) { return x.split('=')[0].trim(); }).filter(Boolean);
+    if (params.length && params[0] === 'self') params = params.slice(1);
+    return { entry: m[1], params: params };
+  }
+
   function signatureLine(res) {
     if (!res || !res.ok) return '';
     var entry = res.entry || 'solve';
@@ -5907,7 +5919,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     return entry + '(' + ps.join(', ') + ')';
   }
 
-  function buildCasePrompt(p, res) {
+  function buildCasePrompt(p, res, sigOverride) {
     var parts = [];
     parts.push('【题目】');
     parts.push(String(p.statement || p.title || '').trim());
@@ -5916,7 +5928,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     if (req) parts.push('时间复杂度要求：' + req);
     parts.push('');
     parts.push('【函数签名】');
-    parts.push(signatureLine(res) || '（按题目自定，请只用题目里出现的参数名）');
+    parts.push(sigOverride || signatureLine(res) || '（按题目自定，请只用题目里出现的参数名）');
     parts.push('');
     parts.push('请按系统要求只输出 JSON。');
     return parts.join(NL);
@@ -5964,6 +5976,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
         box.appendChild(d);
       });
     }
+    if (box && ed && ed.ta) box.style.transform = 'translateY(' + (-ed.ta.scrollTop) + 'px)';
     if (gut) {
       var nums = String(gut.textContent || '').split(NL);
       gut.innerHTML = nums.map(function (t, idx) {
@@ -6113,7 +6126,10 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
 
   function pyCheck(p, s, res) {
     var engine = testEngine();
-    if (!res || !res.ok) { toast('先在编辑器里编译通过，才能实测', 'bad'); return; }
+    /* Python 引擎 + 代码确实是 Python → 直接跑源码，不经过伪代码编译器 */
+    var sig = engine === 'python' ? pySignature(s && s.code) : null;
+    var pyMode = !!(sig && pythonMarkers(s && s.code).length >= 2);
+    if (!pyMode && (!res || !res.ok)) { toast('先在编辑器里编译通过才能实测；或者把实测引擎切到 Python 并直接写 Python 代码', 'bad'); return; }
     if (engine === 'python' && !syncToken()) {
       toast('Python 实测走服务器执行，请先在左侧「云端同步」保存口令；或把实测引擎切成「伪代码」离线测试', 'bad');
       return;
@@ -6124,7 +6140,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     toast('AI 正在随机出测试数据…（引擎：' + engineName() + '）', '');
     function done() { if (btn) { btn.disabled = false; btn.textContent = '实测检查'; } }
 
-    aiCall(AI_CASE_SYS, buildCasePrompt(p, res)).then(function (txt) {
+    aiCall(AI_CASE_SYS, buildCasePrompt(p, res, pyMode ? (sig.entry + '(' + sig.params.join(', ') + ')') : '')).then(function (txt) {
       var j = extractJson(txt);
       var cases = (j && j.cases) || (Array.isArray(j) ? j : null);
       if (!cases || !cases.length) throw new Error('AI 没给出测试数据');
@@ -6137,7 +6153,9 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       return fetch(RUNNER_URL, {
         method: 'POST',
         headers: { 'X-Bank-Token': syncToken(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: C.pyStandalone(res), entry: res.entry || '', cases: cases })
+        body: JSON.stringify(pyMode
+          ? { code: s.code || '', entry: sig.entry, cases: cases }
+          : { code: C.pyStandalone(res), entry: res.entry || '', cases: cases })
       }).then(function (r) {
         return r.text().then(function (t) {
           var d = null; try { d = JSON.parse(t); } catch (e) { }
@@ -6157,16 +6175,23 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       var pass = rows.filter(function (x) { return x.verdict === '通过'; }).length;
       var badRows = rows.filter(function (x) { return x.verdict !== '通过'; });
       s.pyCheck = {
-        at: Date.now(), engine: o.engine, python: d.python || '', entry: d.entry || '',
+        at: Date.now(), engine: o.engine, rawPy: pyMode, python: d.python || '', entry: d.entry || '',
         loadError: d.loadError || '', rows: rows, pass: pass, total: rows.length, ms: d.ms || 0
       };
       /* 把报错行对回伪代码并标红（跑不起来 → 标第一行；输出不符且执行报错 → 对回具体行） */
       var marks = [];
       if (d.loadError) {
-        marks = [1];
+        /* 代码加载/语法错误：traceback 里通常有行号，取出来；取不到才退回第 1 行 */
+        var lm = /line (\d+)/.exec(String(d.loadError));
+        marks = [lm ? parseInt(lm[1], 10) : 1];
       } else {
         badRows.forEach(function (r) {
-          errorPseudoLines(res, s, r).forEach(function (n) { if (marks.indexOf(n) < 0) marks.push(n); });
+          /* Python 源码模式：报错行号就是源码行号，直接用；伪代码模式才需要映射回去 */
+          var ls = pyMode ? (function () {
+            var mm = /line (\d+)/.exec(String(r.where || '') + ' ' + String(r.err || ''));
+            return mm ? [parseInt(mm[1], 10)] : [];
+          })() : errorPseudoLines(res, s, r);
+          ls.forEach(function (n) { if (n > 0 && marks.indexOf(n) < 0) marks.push(n); });
         });
       }
       setEditorMarks(marks, 'check');
