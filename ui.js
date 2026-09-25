@@ -550,18 +550,31 @@
         line.appendChild(el('span', 'cs-dot', '✓'));
         line.appendChild(el('span', 'cs-text', '编译通过 · 入口 ' + (res.entry || '—') + (warns.length ? ' · ' + warns.length + ' 条提示' : '')));
       } else {
-        line.appendChild(el('span', 'cs-dot', 'ⓘ'));
-        line.appendChild(el('span', 'cs-text', '未通过编译 —— 不影响 AI 测评（只看算法思路与逻辑，格式/语法/记号不扣分）'));
+        /* 失败时把第一条错误直接写在状态行上，并**默认展开**明细——错误不该藏在折叠里 */
+        var firstErr = errs[0] || res.diagnostics[0];
+        line.appendChild(el('span', 'cs-dot', '✗'));
+        line.appendChild(el('span', 'cs-text', '编译未通过' + (firstErr ? ('（第 ' + firstErr.line + ' 行：' + firstErr.msg + '）') : '')
+          + ' —— 不影响 AI 测评（只看算法思路与逻辑，格式/语法/记号不扣分）'));
+        state.diagOpen = true;
       }
       dg.appendChild(line);
-      var det = el('div', 'comp-detail' + (state.diagOpen ? '' : ' hidden'));
+      var det = el('div', 'comp-detail' + ((state.diagOpen || !ok) ? '' : ' hidden'));
       res.diagnostics.slice(0, 12).forEach(function (d) {
         det.appendChild(el('div', 'diag ' + (d.level === 'error' ? 'err' : 'warn'), (d.level === 'error' ? '第 ' + d.line + ' 行：' : '提示：') + d.msg));
       });
       dg.appendChild(det);
-      var tg = el('div', 'comp-toggle', state.diagOpen ? '收起编译器提示' : '查看编译器提示');
+      var tg = el('div', 'comp-toggle', (state.diagOpen || !ok) ? '收起编译器提示' : '查看编译器提示');
       tg.onclick = function () { state.diagOpen = !state.diagOpen; renderWorkspace(); };
       dg.appendChild(tg);
+      /* 出错行直接标红在源码上（编译期标红；实测期的标红由实测流程管理，互不覆盖） */
+      if (!ok) {
+        var errLines = errs.map(function (d) { return d.line; }).filter(function (n) { return n > 0; });
+        var uniq = [];
+        errLines.forEach(function (n) { if (uniq.indexOf(n) < 0) uniq.push(n); });
+        setEditorMarks(uniq.slice(0, 20), 'compile');
+      } else if (state.markSource === 'compile') {
+        setEditorMarks([]);
+      }
     }
     safe(function () { renderGrade(s); }, '评分面板');
     var ana = $('anaBox');
@@ -1779,9 +1792,10 @@
     return map;
   }
 
-  function setEditorMarks(lines) {
+  function setEditorMarks(lines, source) {
     var box = $('edMarks'), gut = $('edGutter');
     state.errLines = (lines || []).filter(function (n) { return n > 0; });
+    state.markSource = source || '';
     if (box) {
       while (box.firstChild) box.removeChild(box.firstChild);
       state.errLines.forEach(function (ln) {
@@ -1981,7 +1995,7 @@
           errorPseudoLines(res, s, r).forEach(function (n) { if (marks.indexOf(n) < 0) marks.push(n); });
         });
       }
-      setEditorMarks(marks);
+      setEditorMarks(marks, 'check');
       save();
       state.gradeTab = 'overview';
       renderGrade(s);
@@ -1998,7 +2012,7 @@
       return locateProblem(p, s, res, firstBad).then(function (loc) {
         if (loc) {
           s.pyCheck.locate = loc;
-          if (loc.lines && loc.lines.length) { marks = loc.lines; setEditorMarks(marks); }
+          if (loc.lines && loc.lines.length) { marks = loc.lines; setEditorMarks(marks, 'check'); }
           save();
           renderGrade(s);
         }
