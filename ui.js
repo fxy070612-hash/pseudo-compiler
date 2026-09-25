@@ -981,6 +981,16 @@
           if (r.why) d.appendChild(el('span', 'hint2', '覆盖：' + r.why + (r.ms ? (' · ' + r.ms + 'ms') : '')));
           pcCard.appendChild(d);
         });
+        /* 出错行定位（纯输出不符时由 AI 对照行号给出） */
+        if (pc.locate) {
+          var loc = pc.locate;
+          if (loc.lines && loc.lines.length) {
+            pcCard.appendChild(el('div', 'finding error',
+              '✗ 最可能出错的行：第 ' + loc.lines.join('、') + ' 行（已在源码里标红）'));
+          }
+          if (loc.why) pcCard.appendChild(el('div', 'card-note', '原因：' + loc.why));
+          if (loc.fix) pcCard.appendChild(el('div', 'card-note', '建议：' + loc.fix));
+        }
         box.appendChild(pcCard);
       }
       return;
@@ -1803,6 +1813,54 @@
     } catch (e) { return []; }
   }
 
+  /* 纯「输出不符」（没有异常堆栈）时，只能靠 AI 对着带行号的代码定位出错行 */
+  var AI_LOCATE_SYS = [
+    '你是算法助教。学生的伪代码在某个测试用例上输出不正确，请指出**最可能导致这个结果的那一行（最多 3 行）**。',
+    '',
+    '要求：',
+    '1. 行号必须是下面「带行号的伪代码」里真实存在的行号，不要臆造。',
+    '2. 只标最可能的 1~3 行，优先看：循环起止、下标取值、初始化、递推/转移、返回语句、边界处理。',
+    '3. 要说清「为什么这几行会导致这个错误结果」（引用具体变量或下标在用例中的取值）。',
+    '4. 如果确实无法判断是哪一行，返回空数组并说明原因——不要瞎猜。',
+    '',
+    '只输出 JSON，不要多余文字：',
+    '{"lines":[行号,...],"why":"为什么这几行会导致该结果","fix":"应该怎么改（一句话）"}'
+  ].join('\n');
+
+  function numberedCode(code) {
+    return String(code || '').split(NL).map(function (l, i) { return (i + 1) + '| ' + l; }).join(NL);
+  }
+
+  function buildLocatePrompt(p, s, res, row) {
+    var parts = [];
+    parts.push('【题目】');
+    parts.push(String(p.statement || p.title || '').trim());
+    parts.push('');
+    parts.push('【学生伪代码（格式：行号| 代码）】');
+    parts.push(numberedCode(s.code || ''));
+    parts.push('');
+    parts.push('【没通过的用例】');
+    parts.push('输入：' + jstr(row.args));
+    parts.push('期望输出：' + jstr(row.expect));
+    parts.push('实际输出：' + jstr(row.got));
+    if (row.err) parts.push('运行报错：' + String(row.err).slice(0, 200));
+    parts.push('');
+    parts.push('请按系统要求只输出 JSON。');
+    return parts.join(NL);
+  }
+
+  function locateProblem(p, s, res, row) {
+    return aiCall(AI_LOCATE_SYS, buildLocatePrompt(p, s, res, row)).then(function (txt) {
+      var j = extractJson(txt);
+      if (!j) return null;
+      var n = String(s.code || '').split(NL).length;
+      var lines = (j.lines || []).map(function (x) { return parseInt(x, 10); })
+        .filter(function (x) { return x >= 1 && x <= n; });
+      lines = lines.filter(function (x, i) { return lines.indexOf(x) === i; }).slice(0, 3);
+      return { lines: lines, why: String(j.why || ''), fix: String(j.fix || '') };
+    }).catch(function () { return null; });
+  }
+
   function jstr(v) {
     try {
       var s = JSON.stringify(v);
@@ -1927,9 +1985,25 @@
       save();
       state.gradeTab = 'overview';
       renderGrade(s);
-      var msg = '实测（' + (o.engine === 'python' ? 'Python' : '伪代码') + '）：通过 ' + pass + '/' + rows.length;
-      if (marks.length) msg += ' · 错误行已标红（第 ' + marks.join('、') + ' 行）';
-      toast(msg, pass === rows.length ? 'ok' : 'bad');
+
+      function finish(extra) {
+        var msg = '实测（' + (o.engine === 'python' ? 'Python' : '伪代码') + '）：通过 ' + pass + '/' + rows.length;
+        if (marks.length) msg += ' · 出错行已标红（第 ' + marks.join('、') + ' 行）';
+        toast(msg + (extra || ''), pass === rows.length ? 'ok' : 'bad');
+      }
+      var firstBad = badRows[0];
+      /* 纯「输出不符」没有异常堆栈可映射 → 让 AI 对着带行号的代码定位出错行 */
+      if (d.loadError || !firstBad || marks.length) { finish(''); return; }
+      toast('测试没通过，正在定位是哪几行出问题…', '');
+      return locateProblem(p, s, res, firstBad).then(function (loc) {
+        if (loc) {
+          s.pyCheck.locate = loc;
+          if (loc.lines && loc.lines.length) { marks = loc.lines; setEditorMarks(marks); }
+          save();
+          renderGrade(s);
+        }
+        finish(loc && loc.lines && loc.lines.length ? '' : (loc && loc.why ? '（未能定位到具体行）' : ''));
+      });
     }).catch(function (e) {
       toast('实测失败：' + String(e && e.message || e).slice(0, 60), 'bad');
     }).then(done, done);
