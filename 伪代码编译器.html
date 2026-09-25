@@ -280,6 +280,23 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
         </button>
       </div>
 
+      <div class="side-sec" id="secSync">
+        <div class="sec-head">
+          <button class="sec-toggle" id="tglSync" title="折叠/展开"><span class="caret">▾</span><h3>云端同步</h3></button>
+        </div>
+        <div class="sec-body" id="bodySync">
+          <div class="hint" id="syncStat">未配置</div>
+          <input id="syncToken" type="password" placeholder="粘贴同步口令" autocomplete="off"
+                 style="width:100%;margin-top:7px;box-sizing:border-box">
+          <div class="side-actions" style="margin-top:8px">
+            <button id="btnSyncSave">保存口令</button>
+            <button id="btnSyncUp">上传</button>
+            <button id="btnSyncDown">下载</button>
+          </div>
+          <div class="hint" style="margin-top:6px">服务器为唯一准：改动自动上传，打开时自动对齐；换设备／清浏览器数据都不会丢。</div>
+        </div>
+      </div>
+
       <div class="side-sec" id="secProblem">
         <div class="sec-head">
           <button class="sec-toggle" id="tglProblem" title="折叠/展开"><span class="caret">▾</span><h3>当前题目</h3></button>
@@ -4192,12 +4209,135 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       localStorage.setItem(WRITEKEY, JSON.stringify(meta));
     } catch (e4) { }
     state.savedAt = now;
+    try { cloudQueue(); } catch (e5) { }
     var dot = document.getElementById('saveDot');
     if (dot) {
       dot.textContent = '已自动保存 ' + new Date(now).toLocaleTimeString();
       dot.className = 'save-dot';
     }
   }
+
+  /* ---------------- 云端同步（服务器后端为唯一准） ----------------
+   * 设计：服务器上的题库 JSON 是唯一真相，localStorage 只当离线缓存。
+   *   · 改动后 1.5 秒防抖上传；内容没变就不传
+   *   · 打开时自动对齐：服务器为空 → 把本机题库推上去（首次迁移，用户的旧题就这样进服务器）
+   *     服务器较新 → 覆盖本机（覆盖前先把本机另存一份）
+   *     本机较新 → 推回服务器
+   *   · 断网不影响使用，只提示失败
+   */
+  var SYNCKEY = 'pseudo-sync-config-v1';
+  var SYNC_URL = 'http://112.124.28.206:86/api/bank.php';
+  var SYNC_PRE = 'pseudo-course-workbench-before-cloud';
+  var syncLastBody = '', syncTimer = null, syncBusy = false, syncPending = null;
+
+  function syncCfg() {
+    try { var c = JSON.parse(localStorage.getItem(SYNCKEY) || '{}'); return (c && typeof c === 'object') ? c : {}; } catch (e) { return {}; }
+  }
+  function syncSet(cfg) { try { localStorage.setItem(SYNCKEY, JSON.stringify(cfg)); } catch (e) { } }
+  function syncReady() { return !!(syncCfg().token && typeof fetch === 'function'); }
+  function syncPaint(txt, kind) {
+    var s = $('syncStat');
+    if (!s) return;
+    s.textContent = txt;
+    s.style.color = kind === 'bad' ? 'var(--bad)' : (kind === 'ok' ? 'var(--ok)' : '');
+  }
+  function syncHHMM() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function syncReq(method, body) {
+    var cfg = syncCfg();
+    return fetch(SYNC_URL, {
+      method: method,
+      headers: { 'X-Bank-Token': String(cfg.token || ''), 'Content-Type': 'application/json' },
+      body: body == null ? undefined : body
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (e) { }
+        if (!r.ok) throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status));
+        return j || {};
+      });
+    });
+  }
+  function syncPush(silent, body) {
+    if (!syncReady()) { if (!silent) toast('先填同步口令再上传', 'bad'); return Promise.resolve(false); }
+    if (body == null) { try { body = JSON.stringify(state.problems); } catch (e) { return Promise.resolve(false); } }
+    if (body === syncLastBody) { if (!silent) toast('服务器上已经是最新的'); return Promise.resolve(true); }
+    if (syncBusy) { syncPending = body; return Promise.resolve(false); }
+    syncBusy = true;
+    syncPaint('上传中…');
+    return syncReq('POST', body).then(function () {
+      syncBusy = false; syncLastBody = body;
+      syncPaint('已同步到服务器 · ' + syncHHMM(), 'ok');
+      if (syncPending) { var p = syncPending; syncPending = null; return syncPush(true, p); }
+      if (!silent) toast('已上传到服务器', 'ok');
+      return true;
+    }).catch(function (e) {
+      syncBusy = false;
+      syncPaint('上传失败：' + (e && e.message ? e.message : '网络错误'), 'bad');
+      return false;
+    });
+  }
+  function syncAdopt(bank, why) {
+    try { localStorage.setItem(SYNC_PRE, JSON.stringify(state.problems)); } catch (e) { }
+    state.problems = bank;
+    state.currentId = bank[0].id;
+    state.restored = bank.length;
+    try { syncLastBody = JSON.stringify(bank); } catch (e1) { }
+    try { save(); } catch (e2) { }
+    renderAll(); renderProblems(); renderBank();
+    syncPaint('已与服务器对齐 · ' + bank.length + ' 题 · ' + syncHHMM(), 'ok');
+    toast(why + '（本机旧数据另存了一份，不会丢）', 'ok');
+    return true;
+  }
+  function syncPull(silent) {
+    if (!syncReady()) { if (!silent) toast('先填同步口令再下载', 'bad'); return Promise.resolve(false); }
+    syncPaint('对齐中…');
+    return syncReq('GET').then(function (j) {
+      // 注意：启动时自动生成的「示例题」不算本机题库（state.restored === 0），
+      // 绝不能拿它去覆盖服务器上的真题。
+      var hasLocal = !!state.restored;
+      if (j && j.empty) {
+        if (hasLocal) { if (!silent) toast('服务器为空，正在把本机题库传上去…', 'ok'); return syncPush(true); }
+        syncPaint('服务器为空 · 本机也还没有题库', 'bad');
+        return false;
+      }
+      var bank = (j && j.bank) || null;
+      if (!Array.isArray(bank) || !bank.length) { syncPaint('服务器数据异常', 'bad'); return false; }
+      var srvAt = (Number(j.savedAt) || 0) * 1000;
+      if (!hasLocal) return syncAdopt(bank, '已从服务器载入题库');
+      if (!silent) return syncAdopt(bank, '已用服务器题库覆盖本机');
+      if (srvAt > (state.savedAt || 0)) return syncAdopt(bank, '服务器较新，已覆盖本机');
+      return syncPush(true);
+    }).catch(function (e) {
+      syncPaint('连线失败：' + (e && e.message ? e.message : '网络错误'), 'bad');
+      return false;
+    });
+  }
+  function cloudQueue() {
+    if (!syncReady()) return;
+    var body;
+    try { body = JSON.stringify(state.problems); } catch (e) { return; }
+    if (body === syncLastBody) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () { syncTimer = null; syncPush(true, body); }, 1500);
+  }
+  function cloudBoot() {
+    var typ = $('syncToken');
+    if (typ) typ.value = '';
+    if ($('btnSyncSave')) $('btnSyncSave').onclick = function () {
+      var v = (($('syncToken') && $('syncToken').value) || '').trim();
+      if (!v) { toast('先把同步口令粘贴进去', 'bad'); return; }
+      var c = syncCfg(); c.token = v; syncSet(c);
+      syncLastBody = '';
+      toast('口令已保存，正在对齐服务器…', 'ok');
+      syncPull(true);
+    };
+    if ($('btnSyncUp')) $('btnSyncUp').onclick = function () { syncPush(false); };
+    if ($('btnSyncDown')) $('btnSyncDown').onclick = function () { syncPull(false); };
+    if (!syncReady()) { syncPaint('未配置：粘贴口令后点「保存口令」'); return; }
+    syncLastBody = '';
+    syncPaint('已配置 · 正在对齐服务器…');
+    setTimeout(function () { syncPull(true); }, 700);
+  }
+
   var autoTimer = null;
   function autosave() {
     if (autoTimer) clearTimeout(autoTimer);
@@ -5454,6 +5594,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     });
     bindToggle($('tglProblem'), $('bodyProblem'), 'sec-problem');
     bindToggle($('tglSolution'), $('bodySolution'), 'sec-solution');
+    bindToggle($('tglSync'), $('bodySync'), 'sec-sync');
   }
 
   function doCompile(measure) {
@@ -5606,6 +5747,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       var nsol = state.problems.reduce(function (a, p) { return a + ((p.solutions && p.solutions.length) || 0); }, 0);
       if (state.restored) toast('已载入本机题库：' + state.problems.length + ' 道题 · ' + nsol + ' 个解法（改动会实时自动保存）', 'ok');
       else toast('本机没有找到已保存的题库，先给你一道示例题；导入过 JSON 的话可以用「导入」找回', 'bad');
+      safe(cloudBoot, '云端同步');
     }, 120);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

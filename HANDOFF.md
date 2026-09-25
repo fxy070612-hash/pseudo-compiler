@@ -302,3 +302,78 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
 4. 中文文件名/中文路径经 PowerShell 处理时，`.ps1` 必须写成 **UTF-8 带 BOM**，否则 PS 5.1 按 ANSI 读会乱码；
    而控制台里看到的中文乱码多半只是输出编码问题，**以 WSL 侧 `ls` 的真实文件名为准**。
 5. 枚举窗口别用 `Get-Process msedge | MainWindowTitle`（Chromium 只报一个标题，会漏），要用 `EnumWindows`（user32）才准。
+
+## 10. 部署到阿里云服务器（宝塔面板，2026-09-24）
+
+**线上地址：http://112.124.28.206:86/** （用户指定用这个网址；已实测外网可达，0.47s）
+
+| 项目 | 值 |
+|---|---|
+| 服务器 | 阿里云 ECS `112.124.28.206`，宝塔面板装在 `/www/server/panel`（面板端口 17273，安全入口 `/6d6092f9`） |
+| 站点 | `/www/server/panel/vhost/nginx/112.124.28.206_86.conf`，`listen 86`，root `/www/wwwroot/112.124.28.206_86` |
+| 部署内容 | `index.html` + `伪代码编译器.html`（同一份成品，695,328 字节，md5 `f654fca7…`） |
+| 部署命令 | `~/pseudo-compiler/_deploy_server.sh`（上传 → 校验 md5 → install → 线上再校验，幂等） |
+| 访问方式 | SSH：`ssh -F /dev/null -i ~/.ssh/anbao_key root@112.124.28.206`（**必须带 `-F /dev/null`**，本机 ssh_config.d 有坏软链） |
+
+**原站点已归档、未删除**：:86 原先是个 Vite/React 小游戏「小莓爆尾大冒险｜50关爆破解谜」，用户明确说不要了，
+内容整体搬到 `/www/backup/pseudo-compiler/archive-86-game-20260924/`（含 index.html / assets / manifest）。
+另有用户自己早先的几份备份：`/www/wwwroot/112.124.28.206_86.{backup-books-20260829,backup-game-v11b-20260829,v12-backup-20260831-1650}`。
+要回滚就把归档目录的内容搬回去。
+
+**重要：数据不同源** ⚠️ `http://112.124.28.206:86/` 与本地 `file://` 是**两个不同的浏览器存储域**，
+所以线上打开时题库是**空的**；用户既有的题库仍在本地 `file://` 域下（见第 11 节）。
+要让两边同一份数据，必须做**服务端数据接口**（用户原话「把后端放到面板上」），否则只能手动导出/导入。
+
+## 11. 用户数据（localStorage）备份 —— 未完成，下次继续
+
+用户明确表达「总是担心数据丢了」。现状与已查明的事实：
+
+- 用户确实有数据：Edge 配置 `%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Local Storage\leveldb` 里存在
+  `pseudo-course-workbench-v1` 等键，抽样可见题目「两个有序数组的中位数」及其解法。
+- 应用的存储设计：主键 `pseudo-course-workbench-v1`，另有 `-backup` 与滚动快照 `-snap-0/1/2`、`-lastwrite`
+  （见 `ui.js` 第 7~117 行）。**这些都在同一个 localStorage 里**，所以「清除浏览数据」会一次全没。
+- 已实测：`file://` 下 localStorage **与文件路径无关**（同 origin），所以移动/改名文件夹不会丢数据。
+- **导出思路（已验证到一半）**：把 `.../User Data/Default/Local Storage/leveldb` 复制到临时目录，
+  用 `--user-data-dir` 指向它跑无头 Edge + 打开一个注入了 dump 脚本的应用副本，即可让浏览器自己吐出干净的 JSON。
+  坑：**profile 必须放在 `<user-data-dir>/Default/` 下**（第一次放错层级 → 读出来 0 个键）；
+  第二次修正后**无头 Edge 卡住超时**（300s），下次要加 `timeout` 并对单个文件失败容错，或改用 CDP。
+- 最省事的兜底：让用户在本地文件里点一次「导出题库」，把 JSON 存到固定目录，再由脚本定期同步到服务器
+  `/www/backup/pseudo-compiler/`。
+
+> **2026-09-24 更新：此问题已由第 12 节的服务端后端解决**（数据存服务器，不再只活在浏览器里）。
+> 上面这段「无头复制配置导出」的思路仍可作为离线取证手段，但日常不再需要。
+
+## 12. 云端同步后端（2026-09-24 上线）：数据不再只活在浏览器里
+
+用户诉求原话：「把数据都放在后端」「保持一致」「我之前的几道题也存进去」。
+
+**架构：服务器上的题库 JSON 是唯一真相，localStorage 只当离线缓存。**
+
+| 组件 | 位置 |
+|---|---|
+| 接口 | `http://112.124.28.206:86/api/bank.php`（`GET` 读 / `POST` 写，鉴权头 `X-Bank-Token`） |
+| 接口文件 | `/www/wwwroot/112.124.28.206_86/api/bank.php`（PHP 8.2） |
+| 数据 | `/www/wwwroot/pseudo_data/bank.json`（**在站点根之外**；无任何站点以 `/www/wwwroot` 为根 → 不可被公开访问） |
+| 同步口令 | `/www/wwwroot/pseudo_data/token.txt`（`root:www 640`，48 位 hex）。**绝不写进公开页面或仓库**；用户那份在 `Documents\pseudo-compiler\同步口令.txt` |
+| 写入历史 | 每次 POST 前自动留一份 → `/www/wwwroot/pseudo_data/history/`，保留 30 份 |
+| 每日快照 | 计划任务 `30 3 * * *` 跑 `/www/backup/pseudo-compiler/daily_backup.sh`，保留 90 天 |
+
+**应用侧实现**（`ui.js` 新增「云端同步」侧栏区块 + `shell.html` 对应 DOM）：`SYNC_URL` 硬编码在 `ui.js`；口令只存浏览器 localStorage（键 `pseudo-sync-config-v1`）。
+
+- 改动后 **1.5 秒防抖上传**；内容与上次提交完全相同则不传（挡住 10 秒自动保存造成的无谓请求）
+- 打开时自动对齐（`cloudBoot` → `syncPull`）：
+  - 服务器为空 → 把本机题库推上去（**用户原有的几道题就是这样完成首次迁移的**）
+  - 服务器较新 → 覆盖本机（覆盖前把本机另存到 `pseudo-course-workbench-before-cloud`）
+  - 本机较新 → 推回服务器
+- ⚠️ **安全护栏（改这块务必保留）**：启动时本机若无存档会自动生成一道「示例题」，它**不算本机题库**
+  （判据 `state.restored === 0`），**绝不能拿它覆盖服务器上的真题**。
+- 断网/接口失败只提示，不影响本地使用（离线照常写题）。
+- **实测两条路径**（无头 Edge 打真实接口，测完已把服务器数据与探针页清理干净）：
+  - 本机有题 → 界面「已同步到服务器 · 16:54」，服务器 GET 确认收到该题
+  - 本机清空 → 界面「已与服务器对齐 · 1 题」，且本机 localStorage 确实写回（`LOCAL_BANK:1`）
+- 关键前提也已实测：**`file://` 页面能跨域调用该接口**（返回 200），所以本地文件版、线上版、平板可以共用同一份数据。
+
+**入口一致性**：桌面 `伪代码编辑器.url` = 本地文件（离线可用，同样会同步）；
+桌面 `伪代码编辑器（应用窗口）.lnk` = `msedge --app http://112.124.28.206:86/`（线上版，数据在服务器）。
+
+⚠️ 第 10/12 节把服务器地址写进了**公开仓库**的 HANDOFF。用户若在意暴露 IP:86，需要改成私有运维文档。
