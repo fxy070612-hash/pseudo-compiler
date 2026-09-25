@@ -219,7 +219,12 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
 .dim-fill.low{background:linear-gradient(90deg,#ffc98f,#e08a2f)}
 .dim-fill.bad{background:linear-gradient(90deg,#ffb3a7,#d8452f)}
 .dim-val{width:56px;text-align:right;font-family:var(--mono);color:var(--ink2)}
-.finding{font-size:12.5px;padding:7px 10px;border-radius:8px;margin-top:6px;line-height:1.55}
+.finding{font-size:12.5px;padding:7px 10px;border-radius:8px;margin-top:6px;line-height:1.55;position:relative;padding-right:64px}
+.reject-mini{position:absolute;right:7px;top:7px;background:rgba(255,255,255,.75);border:1px solid currentColor;
+  color:inherit;font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px;cursor:pointer;opacity:.85}
+.reject-mini:hover{opacity:1;background:#fff}
+#rejectTarget{display:none;background:#fff8ea;border:1px solid #f6d9a8;border-radius:8px;padding:7px 10px;font-size:12px;color:#8a6100;margin-bottom:8px}
+#rejectTarget.show{display:block}
 .finding.error{background:var(--bad-soft);color:#a8321f}
 .finding.warn{background:var(--warn-soft);color:#8a6100}
 .finding.pass{background:var(--ok-soft);color:#137a52}
@@ -469,11 +474,12 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
   <div class="modal" style="width:min(620px,94vw)">
     <div class="modal-head"><h2>驳回重审</h2><div class="grow" style="flex:1"></div><span class="hint" id="rejectScore"></span></div>
     <div class="modal-body">
+      <div id="rejectTarget"></div>
       <div class="field">
         <label>你认为哪里判得不对？（越具体越好）</label>
         <textarea id="rejectReason" style="min-height:110px" placeholder="例如：我的循环边界是对的，题目不要求处理空数组；这里的 minS 初值就是 0，不是漏初始化……"></textarea>
       </div>
-      <div class="hint">组长会带着你的理由重新完整复核一遍：说得对就改判，说不通就维持并说明原因。</div>
+      <div class="hint">会重新交给多位评委独立打分（他们看不到你之前的分数），再由组长逐条核实你的理由后终审。<b>申诉本身不加分</b>：理由不成立就维持原分，理由成立才改判。</div>
       <div id="rejectOut" class="hint" style="white-space:pre-wrap"></div>
     </div>
     <div class="modal-foot">

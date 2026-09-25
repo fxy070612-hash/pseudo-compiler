@@ -617,6 +617,8 @@
     '3. 即使伪代码语法不完全正确、编译器报错，只要思路对，依然算对。不要把语法错误或无法编译当作扣分理由。',
     '4. 判断依据依次是：(a) 算法思想是否适配这道题；(b) 关键步骤（初始化、循环边界、递推/转移、终止条件）是否正确；(c) 时间复杂度是否满足要求；(d) 边界情况（空、单元素、全负、重复、极值、下标越界）是否被正确考虑。',
     '5. 如果给了运行结果或实测数据，那是辅助证据；数据看不出问题时不要凭空判错，但若明显与题意矛盾要指出。',
+    '6. **实事求是，不迎合**：不要为了让分数好看而宽松，也不要为了显得严格而挑刺；' +
+    '也不要把「学生可能更喜欢听什么」当成评分依据。每条结论都要能指出代码或题目里的具体依据。',
     '',
     '评分维度（满分 100）：思路正确性 40、关键步骤 25、复杂度 20、边界与鲁棒 10、表达清晰 5。',
     '',
@@ -676,11 +678,13 @@
     return parts.join('\n');
   }
 
+  /* 评委提示词里**不放申诉内容**：重评必须是纯盲评，AI 才不会被学生的申诉带偏。
+     申诉只交给组长一步去裁定（见 AI_APPEAL_SYS），并且组长给的分还要过程序化护栏。 */
   function buildReviewerPrompt(p, s, res, extra) {
     return promptContext(p, s, res, extra) + '\n\n请按系统要求只输出 JSON 结果。';
   }
 
-  function buildLeadPrompt(p, s, res, extra, reviews) {
+  function buildLeadPrompt(p, s, res, extra, reviews, appeals) {
     var parts = [promptContext(p, s, res, extra), ''];
     parts.push('【各位评审的独立意见（共 ' + reviews.length + ' 份）】');
     reviews.forEach(function (r, i) {
@@ -690,6 +694,16 @@
       (r.issues || []).forEach(function (it) { parts.push('· [' + (it.level || 'info') + '] ' + (it.text || '') + (it.hint ? '（建议：' + it.hint + '）' : '')); });
       if (r.strengths && r.strengths.length) parts.push('· 优点：' + r.strengths.join('；'));
     });
+    /* 让 AI「记得」学生之前申诉过什么，但明确不许据此加分 */
+    if (appeals && appeals.length) {
+      parts.push('');
+      parts.push('【历史驳回记录（只是背景，**绝不代表应当加分**）】');
+      appeals.forEach(function (ap, i) {
+        parts.push((i + 1) + '. 学生主张：' + (ap.target ? ('（针对：' + String(ap.target).slice(0, 120) + '）') : '') + String(ap.reason || '').slice(0, 300));
+        parts.push('   当时裁定：' + (ap.result || '') + (ap.upheld === false ? '（申诉不成立，分数维持原分）' : '') + '；分数 ' + ap.oldScore + ' → ' + ap.newScore);
+      });
+      parts.push('要求：已被裁定「不成立」的主张不得再作为加分理由；本次若仍认定原判正确，就必须给出与原分相同的分数。');
+    }
     parts.push('');
     parts.push('请你作为组长亲自复核后给出最终结论（只输出 JSON）。');
     return parts.join('\n');
@@ -703,8 +717,8 @@
       return j;
     });
   }
-  function aiLeadFinal(p, s, res, extra, reviews) {
-    return aiCall(AI_LEAD_SYS, buildLeadPrompt(p, s, res, extra, reviews)).then(function (txt) {
+  function aiLeadFinal(p, s, res, extra, reviews, appeals) {
+    return aiCall(AI_LEAD_SYS, buildLeadPrompt(p, s, res, extra, reviews, appeals)).then(function (txt) {
       var j = extractJson(txt);
       if (!j) throw new Error('组长返回内容无法解析为 JSON');
       var sc = (typeof j.finalScore === 'number') ? j.finalScore : j.score;
@@ -748,6 +762,10 @@
       }
     } catch (e) { }
     var extra = { others: others, requireTime: req, measured: measured, runInfo: runInfo };
+    /* 重新测评时，把之前的驳回记录带上（AI 记得学生申诉过什么，但明确不许据此加分），
+       并且新结果里要**保留**这些记录，不能被一次重新测评抹掉。 */
+    var prevGrade = s.grade || null;
+    var prevAppeals = (prevGrade && prevGrade.appeals) ? prevGrade.appeals.slice() : [];
     var tasks = [];
     for (var ri = 0; ri < rounds; ri++) tasks.push(aiReviewOnce(p, s, res, extra).catch(function (e) { return { __err: String(e.message || e) }; }));
     Promise.all(tasks)
@@ -758,7 +776,7 @@
           return null;
         }
         if (btn) btn.textContent = '组长终审中…';
-        return aiLeadFinal(p, s, res, extra, okList).then(function (lead) {
+        return aiLeadFinal(p, s, res, extra, okList, prevAppeals).then(function (lead) {
           var final = lead.finalScore;
           var merged = [], seen = {};
           (lead.issues || []).forEach(function (it) {
@@ -784,7 +802,9 @@
             strengths: (lead.strengths || okList[0].strengths || []),
             better: lead.better || '',
             spread: sc[sc.length - 1] - sc[0],
-            verdict: lead.verdict || ''
+            verdict: lead.verdict || '',
+            appeals: prevAppeals, appealed: !!(prevGrade && prevGrade.appealed),
+            appealResult: prevGrade ? prevGrade.appealResult : '', appealUpheld: prevGrade ? prevGrade.appealUpheld : undefined
           };
           if (res && res.ok) { s.result = res; s.badgeText = res.analysis.timeClass; s.badgeKind = 'ok'; }
           save();
@@ -800,7 +820,9 @@
             level: mid >= 90 ? '优秀' : mid >= 75 ? '良好' : mid >= 60 ? '及格' : '需要改进',
             runs: okList.map(function (x) { return { score: x.score, verdict: x.verdict, dims: x.dims || [] }; }),
             dims: okList[0].dims || [], findings: [], agreeWith: [], dissent: [], strengths: [], better: '',
-            spread: 0, verdict: okList[0].verdict || ''
+            spread: 0, verdict: okList[0].verdict || '',
+            appeals: prevAppeals, appealed: !!(prevGrade && prevGrade.appealed),
+            appealResult: prevGrade ? prevGrade.appealResult : '', appealUpheld: prevGrade ? prevGrade.appealUpheld : undefined
           };
           if (res && res.ok) s.result = res;
           save(); state.gradeTab = 'overview';
@@ -868,15 +890,21 @@
       rejBtn.title = '对这次评分有异议？点这里把理由写给组长，重新复核一次';
       rejBtn.onclick = openReject;
       act.appendChild(rejBtn);
-      act.appendChild(el('span', 'hint', '对分数有异议就点它：组长会带着你的理由重新独立复核，可能改判也可能维持'));
+      act.appendChild(el('span', 'hint', '会重新交给多位评委盲评（他们看不到你之前的分数），再由组长逐条核实你的理由：不成立就维持原分，成立才改判。'));
       box.appendChild(act);
       if (g.appeals && g.appeals.length) {
         var lastAp = g.appeals[g.appeals.length - 1];
-        box.appendChild(gradeCard('驳回记录（' + g.appeals.length + ' 次）', [
+        var rec = [
           '最近一次：' + (lastAp.result || '') + ' · ' + lastAp.oldScore + ' → ' + lastAp.newScore + ' 分',
-          '理由：' + (lastAp.reason || ''),
-          lastAp.response ? ('组长答复：' + lastAp.response) : ''
-        ]));
+          '理由：' + (lastAp.reason || '')
+        ];
+        if (lastAp.target) rec.push('针对：' + lastAp.target);
+        if (lastAp.items && lastAp.items.length) {
+          lastAp.items.forEach(function (it) { rec.push('· ' + (it.verdict || '') + '：' + (it.claim || '') + (it.why ? ' — ' + it.why : '')); });
+        }
+        if (lastAp.upheld === false) rec.push('结论：申诉不成立 → 分数维持原分（申诉本身不加分）');
+        if (lastAp.response) rec.push('组长答复：' + lastAp.response);
+        box.appendChild(gradeCard('驳回记录（' + g.appeals.length + ' 次）', rec));
       }
       var errors = (g.findings || []).filter(function (f) { return f.level === 'error'; });
       var others = (g.findings || []).length - errors.length;
@@ -918,6 +946,14 @@
         list.forEach(function (f) {
           var d = el('div', 'finding ' + cls, mark + (f.text || ''));
           if (f.hint) d.appendChild(el('span', 'hint2', '建议：' + f.hint));
+          /* 每一条问题/提醒都能单独驳回：点它会把这条填进驳回理由，只针对这一条重审 */
+          var rb = el('button', 'reject-mini', '驳回');
+          rb.title = '这一条我不同意：只针对这一条交给评委重新核实';
+          rb.onclick = function (ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            openReject({ text: f.text || '', level: f.level || 'info' });
+          };
+          d.appendChild(rb);
           c.appendChild(d);
         });
         box.appendChild(c);
@@ -1558,43 +1594,82 @@
   }
 
   /* ---------------- 驳回重审 ---------------- */
+  /* 驳回重审：多位评委「盲评」重打 + 组长逐条核实后终审。
+     注意 prompt 只能"劝"，真正拦住"申诉就加分"的是 submitReject 里的程序化护栏。 */
   var AI_APPEAL_SYS = [
-    '你是这门课的**评分组长**，现在在处理学生对你上次评分的**驳回申诉**。',
+    '你是这门课的**评分组长**，现在处理学生的**驳回申诉**。',
+    '已经有多位评审在**不知道上一轮分数**的情况下重新独立评了一遍（见下方）。',
     '',
-    '请务必客观、仔细：不要因为学生申诉就无条件改判，也不要为了维护原判而回避自己可能的错误。',
-    '流程：',
-    '1. 重新完整读一遍伪代码与题目，独立判断思路与关键步骤是否正确；',
-    '2. 逐条审视学生的申诉理由：说得对就采纳并改判；说得不对就说明为什么不成立；',
-    '3. 若发现自己上次确实判错（尤其是把格式/记号问题当成了错误），要明确承认并给出更正的分数；',
-    '4. 再次强调：格式、语法、记号（符号写法）问题都不算错；思路对就算对。',
+    '【硬性规则，必须遵守】',
+    '1. **申诉本身不是加分理由**：若你判定申诉不成立，最终分数必须与原分**完全相同**，一点也不许上调。',
+    '2. 只有申诉指出的**具体事实错误确实成立**时才可以改分，且必须引用代码或题目里的具体位置作为依据。',
+    '3. 若复核发现原判**过宽**（原先给高了），即使学生在申诉，也要下调并说明理由。',
+    '4. 必须逐条回应学生的每一条主张：成立 / 不成立 + 理由。',
+    '5. 与既有评分原则一致：格式、语法、记号（符号写法）问题一律不算错；思路对就算对。',
+    '6. **实事求是，不迎合**：你是评分者，不是来让学生开心的。不要奉承、不要因为学生不满意就改口；' +
+    '找不到事实依据就维持原分（甚至可下调）；每一条结论都必须引用代码或题目里的具体位置。',
+    '7. **核实后不成立就必须直说**：若某条驳回理由经核实是错的，明确写「这条驳回不成立，因为……」，' +
+    '不要含糊、不要用客套话绕过去、也不要为了安慰学生而含糊地承认或部分承认。',
     '',
     '只输出 JSON，不要多余文字：',
-    '{"result":"改判 或 维持", "finalScore": 0-100 的整数, "verdict": "最终总评", "response": "给学生看的答复", "changed": ["改动了什么"], "issues": [{"level":"error|warn|info","text":"仍存在的问题","hint":"建议"}], "dims": [{"name":"思路正确性","score":数字,"full":40,"note":"理由"}]}'
+    '{"upheld": true 或 false（申诉是否成立）, "finalScore": 0-100 的整数, "verdict": "最终总评", "response": "给学生看的答复", "items": [{"claim":"学生的主张","verdict":"成立 或 不成立","why":"理由"}], "changed": ["改动了哪些判定"], "issues": [{"level":"error|warn|info","text":"仍存在的问题","hint":"建议"}], "dims": [{"name":"思路正确性","score":数字,"full":40,"note":"理由"}]}'
   ].join('\n');
 
-  function buildAppealPrompt(p, s, res, extra, g, reason) {
+  function buildAppealLeadPrompt(p, s, res, extra, reviews, g, reason, target) {
     var parts = [promptContext(p, s, res, extra), ''];
-    parts.push('【你上次的终审结论】');
+    parts.push('【上一轮终审（原判，最终分数必须以此为准做比较）】');
     parts.push('分数：' + g.score + '（' + (g.level || '') + '）');
     if (g.verdict) parts.push('总评：' + g.verdict);
     (g.findings || []).forEach(function (f) { parts.push('· [' + (f.level || 'info') + '] ' + (f.text || '')); });
-    if (g.runs && g.runs.length) parts.push('当时各评审给分：' + g.runs.map(function (r) { return r.score; }).join(' / '));
     parts.push('');
-    parts.push('【学生的驳回理由】');
-    parts.push(reason || '（未填写具体理由，请自行重新复核一遍）');
+    parts.push('【学生申诉】');
+    if (target && target.text) parts.push('只针对这一条：' + target.text);
+    else parts.push('（针对整份评分）');
+    parts.push('理由：' + (reason || '（未写具体理由）'));
     parts.push('');
-    parts.push('请重新复核并给出最终结论（只输出 JSON）。');
+    if (reviews && reviews.length) {
+      parts.push('【本轮重新独立评审（共 ' + reviews.length + ' 份，均未看到上一轮分数）】');
+      reviews.forEach(function (r, i) {
+        parts.push('---- 评审 ' + (i + 1) + '：给分 ' + r.score + ' ----');
+        if (r.verdict) parts.push('总评：' + r.verdict);
+        (r.dims || []).forEach(function (d) { parts.push('· ' + (d.name || '') + ' ' + (d.score || 0) + '/' + (d.full || '') + '：' + (d.note || '')); });
+        (r.issues || []).forEach(function (it) { parts.push('· [' + (it.level || 'info') + '] ' + (it.text || '')); });
+        if (r.strengths && r.strengths.length) parts.push('· 优点：' + r.strengths.slice(0, 3).join('；'));
+      });
+    } else {
+      parts.push('【本轮重新评审全部失败，请你自行完整复核一遍代码】');
+    }
+    parts.push('');
+    parts.push('请严格按硬性规则给出结论（只输出 JSON）：申诉不成立时，finalScore 必须等于原分。');
     return parts.join(NL);
   }
 
-  function openReject() {
+  function aiLeadAppeal(p, s, res, extra, reviews, g, reason, target) {
+    return aiCall(AI_APPEAL_SYS, buildAppealLeadPrompt(p, s, res, extra, reviews, g, reason, target)).then(function (txt) {
+      var j = extractJson(txt);
+      if (!j) throw new Error('组长返回内容无法解析为 JSON');
+      if (typeof j.finalScore !== 'number') throw new Error('组长未给出 finalScore');
+      return j;
+    });
+  }
+
+  function openReject(target) {
     var s = currentSolution();
     if (!s || !s.grade) { toast('先做一次 AI 测评，才能驳回', 'bad'); return; }
+    state.rejectTarget = (target && target.text) ? { text: target.text, level: target.level || 'info' } : null;
     $('rejectScore').textContent = '当前终审分数：' + s.grade.score + ' 分（' + (s.grade.level || '') + '）';
-    $('rejectReason').value = '';
+    var tb = $('rejectTarget');
+    if (tb) {
+      if (state.rejectTarget) { tb.textContent = '本次只针对这一条：' + state.rejectTarget.text; tb.classList.add('show'); }
+      else { tb.textContent = ''; tb.classList.remove('show'); }
+    }
+    $('rejectReason').value = state.rejectTarget
+      ? ('这一条我认为判错了：' + state.rejectTarget.text + NL + NL + '我的理由：')
+      : '';
     $('rejectOut').textContent = '';
     $('rejectMask').classList.remove('hidden');
     $('rejectReason').focus();
+    if (state.rejectTarget) { try { var v = $('rejectReason').value; $('rejectReason').setSelectionRange(v.length, v.length); } catch (e) { } }
   }
 
   function submitReject() {
@@ -1604,35 +1679,66 @@
     if (!reason) { toast('请填写驳回理由', 'bad'); return; }
     var btn = $('btnRejectSend');
     if (btn) { btn.disabled = true; btn.textContent = '重审中…'; }
-    $('rejectOut').textContent = '组长正在重新复核…';
     var res = (s.result && s.result.ok) ? s.result : C.compile(s.code, { outputs: s.outputs || undefined });
     var others = (p.solutions || []).filter(function (x) { return x.id !== s.id && x.code; }).map(function (x) { return { name: x.name, code: x.code }; });
     var extra = { others: others, requireTime: requireTimeOf(p) };
-    var g = s.grade;
+    var g = s.grade, old = g.score;
+    var target = state.rejectTarget || null;
+    var rounds = Math.max(1, Math.min(5, parseInt(loadCfg().rounds, 10) || 3));
     function done() { if (btn) { btn.disabled = false; btn.textContent = '提交驳回'; } }
-    aiCall(AI_APPEAL_SYS, buildAppealPrompt(p, s, res, extra, g, reason)).then(function (txt) {
-      var j = extractJson(txt);
-      if (!j) throw new Error('组长返回内容无法解析为 JSON');
-      var ns = (typeof j.finalScore === 'number') ? Math.max(0, Math.min(100, Math.round(j.finalScore))) : g.score;
-      var old = g.score;
-      var result = (j.result === '改判' || ns !== old) ? '改判' : '维持';
-      var appeals = (g.appeals || []).slice();
-      appeals.push({ reason: reason, oldScore: old, newScore: ns, result: result, response: j.response || '', at: Date.now() });
-      s.grade = {
-        ai: true, score: ns, wanted: g.wanted, reviewers: g.reviewers,
-        level: ns >= 90 ? '优秀' : ns >= 75 ? '良好' : ns >= 60 ? '及格' : '需要改进',
-        runs: g.runs || [], dims: j.dims || g.dims || [], findings: j.issues || g.findings || [],
-        agreeWith: g.agreeWith || [], dissent: g.dissent || [], strengths: g.strengths || [],
-        better: j.better || g.better || '', spread: g.spread || 0,
-        verdict: j.verdict || g.verdict || '',
-        appeals: appeals, appealed: true, appealResult: result, changed: j.changed || []
-      };
-      if (res && res.ok) { s.result = res; s.badgeText = res.analysis.timeClass; }
-      save();
-      state.gradeTab = 'overview';
-      renderGrade(s); renderSolutions();
-      $('rejectOut').textContent = '组长结论：' + result + '（' + old + ' → ' + ns + ' 分）' + (j.response ? NL + j.response : '');
-      toast('驳回重审完成：' + result + '，' + old + ' → ' + ns + ' 分', result === '改判' ? 'ok' : '');
+
+    /* 1) 纯盲评重打：多位评委重新独立评分，**完全不给它们申诉内容**，
+          这样 AI 不会被学生的申诉带偏（申诉只交给组长那一步裁定）。 */
+    $('rejectOut').textContent = '重新评审中（' + rounds + ' 位评委独立打分，他们看不到你之前的分数，也看不到你的申诉理由）…';
+    var tasks = [];
+    for (var ri = 0; ri < rounds; ri++) {
+      tasks.push(aiReviewOnce(p, s, res, extra).catch(function (e) { return null; }));
+    }
+    Promise.all(tasks).then(function (all) {
+      var reviews = (all || []).filter(function (x) { return x && typeof x.score === 'number'; });
+      $('rejectOut').textContent = '组长终审中（已收集 ' + reviews.length + '/' + rounds + ' 份重新评审）…';
+
+      /* 2) 组长逐条核实申诉主张并终审 */
+      return aiLeadAppeal(p, s, res, extra, reviews, g, reason, target).then(function (j) {
+        var ns = Math.max(0, Math.min(100, Math.round(j.finalScore)));
+        var items = Array.isArray(j.items) ? j.items : [];
+        var anyUpheld = items.some(function (it) { return it && String(it.verdict || '').indexOf('成立') === 0; });
+        var upheld = (j.upheld === true) || anyUpheld;
+        /* 程序化护栏：申诉不成立时，分数一个字都不动。
+           只靠提示词是劝不住的——模型总会"体谅"学生而悄悄加一两分，所以这里直接不采纳它给的数。 */
+        if (!upheld) ns = old;
+        var result = (ns === old) ? '维持' : (ns > old ? '改判·上调' : '改判·下调');
+
+        var appeals = (g.appeals || []).slice();
+        appeals.push({
+          reason: reason, target: target ? target.text : '', oldScore: old, newScore: ns,
+          result: result, upheld: upheld, items: items, response: j.response || '', at: Date.now()
+        });
+        s.grade = {
+          ai: true, score: ns, wanted: g.wanted, reviewers: reviews.length || g.reviewers,
+          level: ns >= 90 ? '优秀' : ns >= 75 ? '良好' : ns >= 60 ? '及格' : '需要改进',
+          runs: reviews.length ? reviews.map(function (r) { return { score: r.score, verdict: r.verdict || '' }; }) : (g.runs || []),
+          dims: j.dims || g.dims || [], findings: j.issues || g.findings || [],
+          agreeWith: g.agreeWith || [], dissent: g.dissent || [], strengths: g.strengths || [],
+          better: j.better || g.better || '', spread: g.spread || 0,
+          verdict: j.verdict || g.verdict || '',
+          appeals: appeals, appealed: true, appealResult: result, appealUpheld: upheld, changed: j.changed || []
+        };
+        if (res && res.ok) { s.result = res; s.badgeText = res.analysis.timeClass; }
+        save();
+        state.gradeTab = 'overview';
+        state.rejectTarget = null;
+        renderGrade(s); renderSolutions();
+
+        var lines = ['组长结论：' + result + '（' + old + ' → ' + ns + ' 分）'];
+        if (items.length) {
+          items.forEach(function (it) { lines.push('· ' + (it.verdict || '') + '：' + (it.claim || '') + (it.why ? ' — ' + it.why : '')); });
+        }
+        if (!upheld) lines.push('申诉不成立，分数维持原分（申诉本身不加分）。');
+        if (j.response) lines.push('', j.response);
+        $('rejectOut').textContent = lines.join(NL);
+        toast('驳回重审完成：' + result + '，' + old + ' → ' + ns + ' 分', ns !== old ? 'ok' : '');
+      });
     }).catch(function (e) {
       $('rejectOut').textContent = '重审失败：' + e.message;
       toast('重审失败：' + String(e.message || e).slice(0, 50), 'bad');
