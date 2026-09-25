@@ -518,7 +518,11 @@
     $('probNotes').value = p.notes || '';
     $('probSize').value = p.size || 512;
     var s = currentSolution();
-    safe(function () { ed.setValue(s ? s.code : '', true); }, '载入编辑器');
+    safe(function () {
+      ed.setValue(s ? s.code : '', true);
+      /* 记住编辑器里现在装的是哪个解法，避免把「别的解法的代码/空内容」误写回当前解法 */
+      ed.solId = s ? s.id : null;
+    }, '载入编辑器');
     safe(renderProblems, '题目列表');
     safe(renderSolutions, '解法列表');
     safe(renderWorkspace, '结果面板');
@@ -741,7 +745,7 @@
     if (!p || !s) return;
     var btn = $('btnGrade');
     if (btn && btn.disabled) return;
-    s.code = ed.value();
+    adoptEditorCode(s);
     var cfg = loadCfg();
     if (!cfg.key || !cfg.model) {
       toast('请先在 AI 设置里填写 Base URL、模型与 Key', 'bad');
@@ -898,6 +902,17 @@
       rejBtn.title = '对这次评分有异议？点这里把理由写给组长，重新复核一次';
       rejBtn.onclick = openReject;
       act.appendChild(rejBtn);
+      /* 真 Python 实测：AI 只按题目+签名随机出例（不看学生代码），服务器上用真 Python 跑后逐例比对 */
+      var pyBtn = el('button', 'reject-btn', '真 Python 实测');
+      pyBtn.id = 'btnPyCheck';
+      pyBtn.title = '让 AI 随机出 4 组测试数据 → 服务器上用真 Python 运行你的代码 → 逐组比对输出（不通过会明确标红）';
+      pyBtn.onclick = function () {
+        var st = currentSolution();
+        var rr = (st && st.result && st.result.ok) ? st.result : (st ? C.compile(st.code, {}) : null);
+        pyCheck(currentProblem(), st, rr);
+      };
+      act.appendChild(pyBtn);
+      act.appendChild(el('span', 'hint', '实测走服务器真 Python（沙箱、8 秒超时）；AI 出例时不看你的代码，期望值由它独立算出。'));
       act.appendChild(el('span', 'hint', '会重新交给多位评委盲评（他们看不到你之前的分数），再由组长逐条核实你的理由：不成立就维持原分，成立才改判。'));
       box.appendChild(act);
       if (g.appeals && g.appeals.length) {
@@ -921,6 +936,33 @@
         others ? ('另有 ' + others + ' 条提醒，见「问题」页。') : '',
         (g.strengths && g.strengths.length) ? ('优点：' + g.strengths.slice(0, 3).join('；')) : ''
       ]));
+      /* 真 Python 实测结果：不通过的一律标红并写清「期望 vs 实际」 */
+      if (s.pyCheck) {
+        var pc = s.pyCheck;
+        var bad = (pc.total || 0) - (pc.pass || 0);
+        var pcCard = el('div', 'card');
+        pcCard.appendChild(el('div', 'card-title',
+          '真 Python 实测 · 通过 ' + pc.pass + '/' + pc.total + (pc.python ? '（' + pc.python + '）' : '')));
+        if (pc.loadError) {
+          pcCard.appendChild(el('div', 'finding error', '✗ 你的代码在 Python 里跑不起来：' + pc.loadError));
+        } else if (bad > 0) {
+          pcCard.appendChild(el('div', 'finding error',
+            '✗ 有 ' + bad + ' 组输出与正确答案不一致（下面标红的就是不通过的）'));
+        } else {
+          pcCard.appendChild(el('div', 'finding pass', '✓ ' + pc.total + ' 组全部跑通，输出与 AI 独立算出的答案一致'));
+        }
+        (pc.rows || []).forEach(function (r, i) {
+          var cls = r.verdict === '通过' ? 'pass' : (r.verdict === '运行出错' ? 'error' : 'warn');
+          var mark = r.verdict === '通过' ? '✓ ' : (r.verdict === '运行出错' ? '✗ ' : '✗ ');
+          var line = '#' + (i + 1) + ' 【' + (r.verdict || '') + '】期望 ' + jstr(r.expect) + '，实际 ' + jstr(r.got)
+            + '　输入 ' + jstr(r.args);
+          if (r.err) line += '　报错：' + r.err;
+          var d = el('div', 'finding ' + cls, mark + line);
+          if (r.why) d.appendChild(el('span', 'hint2', '覆盖：' + r.why + (r.ms ? (' · ' + r.ms + 'ms') : '')));
+          pcCard.appendChild(d);
+        });
+        box.appendChild(pcCard);
+      }
       return;
     }
 
@@ -1576,10 +1618,20 @@
     }
   }
 
+  /* 把编辑器的内容写回解法——但只在「编辑器里装的正是这个解法」时才写。
+     否则（编辑器还没装载、或装的是别的解法）会把代码清空/写错，这类误写会被 save() 立刻落盘。
+     ⚠ 不要改回无条件 s.code = ed.value()。 */
+  function adoptEditorCode(s) {
+    if (!s || !ed) return;
+    if (ed.solId !== s.id) return;
+    var v = ed.value();
+    if (typeof v === 'string') s.code = v;
+  }
+
   function doCompile(measure) {
     var p = currentProblem(), s = currentSolution();
     if (!p || !s) return;
-    s.code = ed.value();
+    adoptEditorCode(s);
     p.statement = $('probStatement').value; p.title = $('probTitle').value;
     p.notes = $('probNotes').value; p.size = parseInt($('probSize').value, 10) || 512;
     var res = compileCurrent(!!measure);
@@ -1611,7 +1663,112 @@
     return m ? m[0] : '';
   }
 
-  /* ---------------- 驳回重审 ---------------- */
+  /* ---------------- 真 Python 实测（AI 随机出例 → 服务器真 Python 跑 → 比对输出） ----------------
+   * 要点：出题时**不给 AI 看学生的代码**——否则它会照着学生的（可能有 bug 的）实现去猜期望值，
+   * 比对就失去意义。只给题目 + 函数签名，期望值必须由 AI 独立算出来。 */
+  var RUNNER_URL = 'http://112.124.28.206:86/api/run';
+
+  var AI_CASE_SYS = [
+    '你是《数据结构与算法分析》课程的助教，现在负责**出测试数据**。',
+    '',
+    '请为下面这道题随机生成 4 组测试数据，覆盖不同规模与边界情况（如空、单元素、重复元素、全负、极值、已排序/逆序）。',
+    '同时给出每组数据的**正确输出**——必须由你自己按题意算出来，不要猜测、不要照抄任何实现。',
+    '',
+    '只输出 JSON，不要多余文字：',
+    '{"cases":[{"args":{"参数名":值},"expect":正确输出,"why":"这组覆盖了什么情况"}]}',
+    '',
+    '硬性要求：',
+    '1. args 的键必须与函数参数名**完全一致**；数组直接给 JSON 数组；与数组长度有关的规模参数要和数组长度一致。',
+    '2. 规模控制在 12 以内（除非题目明确要求更大），保证能很快跑完。',
+    '3. expect 用最简可比的形式：单个数字就写数字，多个输出写数组，不要写文字说明。',
+    '4. 至少有一组覆盖边界情况。'
+  ].join('\n');
+
+  function syncToken() { var c = syncCfg(); return String((c && c.token) || ''); }
+
+  function signatureLine(res) {
+    if (!res || !res.ok) return '';
+    var entry = res.entry || 'solve';
+    var ps = (res.inputSpec || []).map(function (sp) {
+      return sp.name + (sp.kind === 'array' ? '（数组）' : (sp.kind === 'matrix' ? '（二维数组）' : '（整数）'));
+    });
+    return entry + '(' + ps.join(', ') + ')';
+  }
+
+  function buildCasePrompt(p, res) {
+    var parts = [];
+    parts.push('【题目】');
+    parts.push(String(p.statement || p.title || '').trim());
+    if (p.notes) parts.push('题目要求：' + p.notes);
+    var req = requireTimeOf(p);
+    if (req) parts.push('时间复杂度要求：' + req);
+    parts.push('');
+    parts.push('【函数签名】');
+    parts.push(signatureLine(res) || '（按题目自定，请只用题目里出现的参数名）');
+    parts.push('');
+    parts.push('请按系统要求只输出 JSON。');
+    return parts.join(NL);
+  }
+
+  function jstr(v) {
+    try {
+      var s = JSON.stringify(v);
+      if (s == null) return String(v);
+      return s.length > 100 ? (s.slice(0, 100) + '…') : s;
+    } catch (e) { return String(v); }
+  }
+
+  function pyCheck(p, s, res) {
+    var tok = syncToken();
+    if (!tok) { toast('真 Python 实测走服务器执行，请先在左侧「云端同步」里保存口令', 'bad'); return; }
+    if (!res || !res.ok) { toast('先在编辑器里编译通过，才能实测', 'bad'); return; }
+    var btn = $('btnPyCheck');
+    if (btn && btn.disabled) return;
+    if (btn) { btn.disabled = true; btn.textContent = '出例 + 实测中…'; }
+    toast('AI 正在随机出测试数据…', '');
+    function done() { if (btn) { btn.disabled = false; btn.textContent = '真 Python 实测'; } }
+    aiCall(AI_CASE_SYS, buildCasePrompt(p, res)).then(function (txt) {
+      var j = extractJson(txt);
+      var cases = (j && j.cases) || (Array.isArray(j) ? j : null);
+      if (!cases || !cases.length) throw new Error('AI 没给出测试数据');
+      cases = cases.slice(0, 12);
+      toast('拿到 ' + cases.length + ' 组数据，正在用真 Python 运行…', '');
+      return fetch(RUNNER_URL, {
+        method: 'POST',
+        headers: { 'X-Bank-Token': tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: C.pyStandalone(res), entry: res.entry || '', cases: cases })
+      }).then(function (r) {
+        return r.text().then(function (t) {
+          var d = null; try { d = JSON.parse(t); } catch (e) { }
+          if (!d) throw new Error('执行端返回异常：' + t.slice(0, 120));
+          if (!r.ok || d.error) throw new Error(d.hint || d.error || ('HTTP ' + r.status));
+          return { d: d, cases: cases };
+        });
+      });
+    }).then(function (o) {
+      var d = o.d, cases = o.cases;
+      var rows = (d.results || []).map(function (r, i) {
+        var c = cases[i] || {};
+        return { args: c.args, expect: c.expect, got: r.ret, ok: r.ok, err: r.error || '',
+                 verdict: (d.verdicts || [])[i] || '', ms: r.ms, why: c.why || '', stdout: r.stdout || '' };
+      });
+      var pass = rows.filter(function (x) { return x.verdict === '通过'; }).length;
+      s.pyCheck = {
+        at: Date.now(), python: d.python || '', entry: d.entry || '', loadError: d.loadError || '',
+        rows: rows, pass: pass, total: rows.length, ms: d.ms || 0
+      };
+      save();
+      state.gradeTab = 'overview';
+      renderGrade(s);
+      var msg = '真 Python 实测：通过 ' + pass + '/' + rows.length;
+      if (d.loadError) msg += '（代码运行报错）';
+      toast(msg, pass === rows.length ? 'ok' : 'bad');
+    }).catch(function (e) {
+      toast('实测失败：' + String(e && e.message || e).slice(0, 60), 'bad');
+    }).then(done, done);
+  }
+
+
   /* 驳回重审：多位评委「盲评」重打 + 组长逐条核实后终审。
      注意 prompt 只能"劝"，真正拦住"申诉就加分"的是 submitReject 里的程序化护栏。 */
   var AI_APPEAL_SYS = [
@@ -1777,7 +1934,7 @@
     if (!state.problems.length) state.problems = [demoProblem()];
     state.currentId = state.problems[0].id;
     ed = new Editor();
-    ed.onChange = function () { var s = currentSolution(); if (s) s.code = ed.value(); autosave(); };
+    ed.onChange = function () { var s = currentSolution(); if (s) { adoptEditorCode(s); autosave(); } };
     try {
       if (typeof window !== 'undefined' && window.addEventListener) {
         window.addEventListener('error', function (ev) { toast('页面出错：' + (ev && ev.message ? ev.message : '未知'), 'bad'); });

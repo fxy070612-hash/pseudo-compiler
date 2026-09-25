@@ -436,3 +436,64 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
 
 **注意**：`s.grade` 被重新赋值的地方有三处（`gradeWithAI` 成功、`gradeWithAI` 组长失败、
 `submitReject`），三处都必须带上 `appeals`，否则驳回记录会被一次重新测评抹掉。
+
+## 14. 真 Python 实测（AI 出例 + 服务器真跑）· 2026-09-24
+
+用户原话：「这里编译实测应该直接通过 python 调用，并且 ai 随机给出几个例子，看看输出对不对」「不通过会报错」。
+
+**为什么不能本地跑**：应用是单文件纯前端（零依赖、离线可用），浏览器里没有真 Python。
+所以在服务器上加了执行端，应用用 `fetch` 调它；同时保留原有 JS 模拟路径作离线兜底。
+
+### 14.1 执行链路（服务器侧）
+
+| 组件 | 位置 |
+|---|---|
+| HTTP 入口 | `http://112.124.28.206:86/api/run`（nginx `location = /api/run` 反代到本机 8799） |
+| 反代配置 | `/www/server/panel/vhost/nginx/extension/112.124.28.206_86/pseudo-runner.conf`（BT 的 extension include，不动主配置） |
+| 服务 | `/www/server/pseudo_runner/runner_server.py`（Python http.server，只监听 127.0.0.1:8799，systemd `pseudo-runner`，并发上限 2） |
+| 沙箱启动器 | `/usr/local/bin/pseudo_python_run` |
+| 测试台 | `/www/wwwroot/pseudo_data/harness.py` |
+| 鉴权 | 沿用题库口令头 `X-Bank-Token`（与 `bank.php` 同一串） |
+
+**PHP 走不通**：宝塔的 php.ini 把 `exec/shell_exec/proc_open/popen/chown/chgrp...` 全禁了
+（CLI 用的是另一个 ini，所以 `php -r` 测出来是"可用"，容易误判）。所以没用 PHP 做执行端。
+
+**沙箱（实测结果）**：`unshare -n`（无网络，实测外连 BLOCKED）+ `ulimit -t 6 -v 400000 -u 64 -f 4096`
++ `timeout 8` 硬超时（死循环实测 8 秒被杀、不留结果文件）+ `runuser -u nobody` 降权
++ `python3 -I -S` 隔离模式 + 每请求独立临时目录 + out/ 目录单独授权给 nobody 写。
+⚠️ 未做 mount 隔离，所以**世界可读的文件仍可被读到**（如 `/www/wwwroot/anbao_app/config.py` 是 755，
+里面有 API Key；没有网络所以传不出去，但建议 `chmod 640` 收紧——那条属于生产配置，我没擅自改）。
+
+**harness 的关键处理**（否则跑不起来）：编译器生成的是「独立可运行版」Python——
+模块顶部有 `n = int(input())`、函数只收数组参数、循环上界引用全局 `n`。所以 harness 必须：
+① 剥掉读 stdin 的前导与 `main()` 驱动；② 把用例参数注入命名空间（让全局 `n` 生效）；
+③ 用 `inspect.signature` 只传函数真正声明的参数。
+
+### 14.2 应用侧（ui.js）
+
+- 评测面板动作行新增按钮「真 Python 实测」（与「驳回 · 申请重审」并排）。
+- 流程：① 以**题目 + 函数签名为唯一输入**让 AI 随机出 4 组数据与期望值（`AI_CASE_SYS`）
+  ——**故意不给它看学生代码**，否则它会照抄学生（可能有 bug 的）实现去猜期望值，比对就失去意义；
+  ② `C.pyStandalone(res)` 取 Python 目标码，POST 到 `/api/run`；③ 逐例比对渲染成卡片。
+- **不通过一律标红**：卡片顶部写「✗ 有 N 组输出与正确答案不一致」，逐条列 `期望 X，实际 Y，输入 …`；
+  代码跑不起来时直接显示 `✗ 你的代码在 Python 里跑不起来：…`；全部通过则绿字「✓ N 组全部跑通」。
+- 需要先在「云端同步」保存口令（执行端要鉴权）；断网/超时只提示，不影响其他功能。
+
+### 14.3 顺带修掉一个会丢代码的 bug ⚠️
+
+`gradeWithAI` 与 `doCompile` 里原本是无条件 `s.code = ed.value();`。
+如果此刻编辑器里是空的（还没装载 / 装的是别的解法），点一次「AI 测评打分」或「编译」
+就会把该解法的代码**清空并立刻落盘**。已被我的端到端测试真实踩到（发出的代码是空模板 `def solve(n)`）。
+
+修法：`Editor` 记住 `ed.solId`（在载入编辑器时记录当前解法 id），新增 `adoptEditorCode(s)`
+——**只有编辑器里装的正是这个解法时**才写回。`gradeWithAI`、`doCompile`、`ed.onChange` 三处都改用它。
+⚠️ 不要把这三处改回无条件 `ed.value()`。
+
+### 14.4 实测证据（无头浏览器走完整流程，测完已清理）
+
+```
+发出的代码 = def maxSubArray(A)…      entry = maxSubArray
+执行端返回 ret = [6, 1, -2, 5]
+判定        = ["通过","通过","通过","不符"]   ← 故意给错期望值的那组被抓出来
+```
+另：无口令 → 401；死循环 → `{"error":"run_failed","exit":124,"hint":"执行超时（8 秒）"}`。
