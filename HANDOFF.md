@@ -14,8 +14,9 @@
 | 位置 | 状态 | 说明 |
 |---|---|---|
 | WSL `~/pseudo-compiler` | ✅ **权威工作副本（2026-09-24 起）** | 206 个文件；改代码只改这里，构建与验证也在这里跑 |
-| `C:\Users\31883\Desktop\pseudo-compiler` | ✅ 已同步为新版（2026-09-24） | ⚠ **用户实际双击打开的就是这一份**（`file:///C:/Users/31883/Desktop/...`），所以每次改完 UI 必须同步覆盖它并提醒 Ctrl+F5。其中**源码类文件（shell.html / ui.js / 脚本）仍是旧的 52 项**，只更新了单文件成品 |
-| `C:\Users\31883\Documents\codex\pseudo-compiler` | 旧排版（未同步） | 与桌面**覆盖前**那份字节相同，等于一份旧版备份，可当回滚用 |
+| `C:\Users\31883\Documents\pseudo-compiler` | ✅ 已同步为新版（2026-09-24 **改到此处**） | ⚠ **用户实际打开的就是这一份**（`file:///C:/Users/31883/Documents/pseudo-compiler/...`），每次改完 UI 必须同步覆盖它并提醒 Ctrl+F5。含 `app-icon.ico`（自绘图标，六个尺寸）。其中**源码类文件仍是旧的 52 项**，只更新了单文件成品 |
+| 桌面 `C:\Users\31883\Desktop\` | 只剩快捷方式 | 用户明确要求**文件夹不要放桌面**，已迁至 Documents；桌面留 `伪代码编辑器.url`（本地）、`伪代码编辑器（GitHub仓库）.url`、`伪代码编辑器（应用窗口）.lnk`（Edge `--app` 无地址栏），开始菜单还有一个同名入口 |
+| `C:\Users\31883\Documents\codex\pseudo-compiler` | 旧排版（未同步） | 与迁移前那份字节相同，等于一份旧版备份，可当回滚用 |
 | `C:\ProgramData\pseudo-compiler` | 备份源（555 只读） | 交接时那份；WSL 副本与它逐文件 md5 一致（成品除外，见下） |
 
 ## 2. 目录内容
@@ -161,9 +162,10 @@ PCDIR=$PWD node _mk.js        # 保险写法
 1. **桌面写不进去**：Codex Windows 沙箱把可写根限制在 workspace(`C:\Users`) + `C:\ProgramData` + `%TEMP%`；
    `CODEX_PERMISSION_PROFILE=:workspace`，`config.toml` 里 `[windows] sandbox = "elevated"`。
    桌面 ACL 上其实有 `embar\CodexSandboxUsers:(M)`，但沙箱策略层仍拦。**WSL 里跑 dsh 不受此限。**
-2. 桌面那份**曾经是**旧排版（694,432）。2026-09-24 已覆盖为新版（695,328，与 WSL 成品 md5 一致）。
-   教训：**用户打开的是桌面那份**，只改 WSL 副本等于没改 —— 改完 UI 一律同步覆盖桌面 + 提醒 Ctrl+F5：
-   `cp ~/pseudo-compiler/伪代码编译器.html "/mnt/c/Users/31883/Desktop/pseudo-compiler/伪代码编译器.html"`
+2. 用户实际打开的那份**已从桌面迁到** `C:\Users\31883\Documents\pseudo-compiler`（2026-09-24，用户要求桌面只留快捷方式）。
+   教训：**用户打开的是这一份**，只改 WSL 副本等于没改 —— 改完 UI 一律同步覆盖它 + 提醒 Ctrl+F5：
+   `cp ~/pseudo-compiler/伪代码编译器.html "/mnt/c/Users/31883/Documents/pseudo-compiler/伪代码编译器.html"`
+   （迁移安全性已实测：`file://` 下 localStorage 与文件路径无关，挪文件夹不会丢用户题库。）
 3. `clrs_alg_final.json` 为空（2 字节）、`clrs_pages.txt` 曾是 2 字节（后在 ProgramData 副本里是完整 2.6 MB）——以 ProgramData 为准。
 4. 第 1、3 章书上几乎全是证明/讨论题，所以只入库 2 题 / 1 题，属正常。
 5. 用户在课程范围上可能还想「只留第 2~4、6~9、14~15、20~25 章」这类筛选 —— 面板已具备搜索+全选，不必改数据。
@@ -271,3 +273,32 @@ python3 _report.py               # ✅ 已完成加工 1~35 章 / 剩余 0 题
 即「别人下载后能看到书本题目」成立，不需要额外数据文件。
 
 版本标签 `v1.0.0` 已推送（Tags 页可下载该快照 ZIP）。
+
+### 9.4 用户桌面入口与自绘图标（2026-09-24）
+
+用户诉求：「怎么方便打开」「文件夹不要放桌面」「图标好看一些」。
+
+**入口（都在 Windows 侧，脚本可重建）**
+
+| 入口 | 类型 | 内容 |
+|---|---|---|
+| 桌面 `伪代码编辑器.url` | InternetShortcut | 本地 `file://` 地址（离线可用，用户日常用这个） |
+| 桌面 `伪代码编辑器（应用窗口）.lnk` | WScript.Shell 快捷方式 | `msedge.exe --app=<file url>`，无地址栏/标签页，像原生应用 |
+| 桌面 `伪代码编辑器（GitHub仓库）.url` | InternetShortcut | 仓库页 |
+| 开始菜单 `伪代码编辑器.url` | InternetShortcut | Win 键输入「伪代码」即可打开 |
+
+**图标**：`C:\Users\31883\Documents\pseudo-compiler\app-icon.ico`（纯色 `#3b6ef5` 圆角方 + 白色 `{}`），
+含 16/32/48/64/128/256 六个尺寸。由无头 Edge 渲染 256px + 纯 Python（无第三方库）面积平均缩放并打包 ICO。
+
+踩坑记录（下一会话别重犯）：
+
+1. **第一版图标被用户当场指出「有点奇怪」，是真的坏了**：`{ }` 里塞了细空格 + 负字距 → 整体偏右不居中；
+   `border-radius` 用了 `vmin` 尺寸导致左右圆角不对称；加了渐变与 inset 阴影反而发脏；16px 下花括号糊成「L」。
+   **教训：自绘图标的 256px 画布要用固定 px、单字符居中、纯色优先，并且做完必须自己先看（本模型不能读图 → 用千问视觉）。**
+2. **Edge 小窗口渲染不出来**：`--window-size=48,48` 截出来是 100 多字节的空白图。
+   正确做法：只渲染 256px，再用纯 Python 面积平均缩放（预乘 alpha）得到其它尺寸。
+3. **Windows 图标缓存按路径记**：同名覆盖 `.ico` 常常不刷新 → 换新文件名（`app.ico` → `app-icon.ico`）并删旧文件，
+   再跑 `ie4uinit.exe -show`。
+4. 中文文件名/中文路径经 PowerShell 处理时，`.ps1` 必须写成 **UTF-8 带 BOM**，否则 PS 5.1 按 ANSI 读会乱码；
+   而控制台里看到的中文乱码多半只是输出编码问题，**以 WSL 侧 `ls` 的真实文件名为准**。
+5. 枚举窗口别用 `Get-Process msedge | MainWindowTitle`（Chromium 只报一个标题，会漏），要用 `EnumWindows`（user32）才准。
