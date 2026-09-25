@@ -558,6 +558,17 @@
         state.diagOpen = true;
       }
       dg.appendChild(line);
+      if (!ok) {
+        var pym = pythonMarkers(s && s.code ? s.code : (ed ? ed.value() : ''));
+        if (pym.length >= 2) {
+          var py = el('div', 'finding error',
+            '这看起来是 **Python** 代码（检测到：' + pym.join('、') + '），而本编辑器编译的是**伪代码**。');
+          py.appendChild(el('span', 'hint2',
+            '改成伪代码：函数头写 function 名字(A[1..n]) : int；块用 end 结束（if 条件 then … end、for i = 1 to n do … end），不要用冒号和缩进；'
+            + '不要用 def / import / elif、x.y() 方法调用、列表推导；数组下标默认从 1 开始。'));
+          dg.appendChild(py);
+        }
+      }
       var det = el('div', 'comp-detail' + ((state.diagOpen || !ok) ? '' : ' hidden'));
       res.diagnostics.slice(0, 12).forEach(function (d) {
         det.appendChild(el('div', 'diag ' + (d.level === 'error' ? 'err' : 'warn'), (d.level === 'error' ? '第 ' + d.line + ' 行：' : '提示：') + d.msg));
@@ -1840,6 +1851,20 @@
     '只输出 JSON，不要多余文字：',
     '{"lines":[行号,...],"why":"为什么这几行会导致该结果","fix":"应该怎么改（一句话）"}'
   ].join('\n');
+
+  /* 识别「这是 Python，不是伪代码」——用户很容易直接把 Python 粘进来，
+     只说「无法识别的字符 .」他看不懂，得直接告诉他该写什么。 */
+  function pythonMarkers(code) {
+    var s = String(code || ''), hits = [];
+    if (/(^|\n)\s*def\s+[A-Za-z_]\w*\s*\(/.test(s)) hits.push('def 定义函数');
+    if (/(^|\n)\s*(import|from)\s+[A-Za-z_]/.test(s)) hits.push('import 导入');
+    if (/(^|\n)\s*elif\b/.test(s)) hits.push('elif');
+    if (/[)\]\w]\s*:\s*(\n|$)/.test(s)) hits.push('行尾冒号');
+    if (/[A-Za-z_]\w*\.[A-Za-z_]\w*\s*\(/.test(s)) hits.push('x.y() 方法调用');
+    if (/\[[^\]\n]*\bfor\b[^\]\n]*\]/.test(s)) hits.push('列表推导');
+    if (/\b(len|sorted|append|range|print|reversed|enumerate)\s*\(/.test(s)) hits.push('Python 内置函数');
+    return hits;
+  }
 
   function numberedCode(code) {
     return String(code || '').split(NL).map(function (l, i) { return (i + 1) + '| ' + l; }).join(NL);

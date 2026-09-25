@@ -707,11 +707,23 @@
   function parse(src) {
     var toks;
     try { toks = new Lexer(src).tokenize(); }
-    catch (e) { return { ast: null, diags: [{ level: 'error', line: 1, col: 1, msg: String(e.message || e) }] }; }
+    catch (e) {
+      /* 解析/词法错误：消息里通常带「（第 N 行）」，把它取出来当诊断行号——
+         以前写死 line:1，结果所有语法错误都标在第 1 行，等于没告诉你错在哪。 */
+      var em = String(e.message || e);
+      var lm = /（第\s*(\d+)\s*行）/.exec(em);
+      var eln = lm ? parseInt(lm[1], 10) : 1;
+      return { ast: null, diags: [{ level: 'error', line: eln, col: 1, msg: em.replace(/（第\s*\d+\s*行）/g, '').trim() }] };
+    }
     var p = new Parser(toks);
     var ast = null;
     try { ast = p.parseProgram(); }
-    catch (e) { p.diags.push({ level: 'error', line: 1, col: 1, msg: '解析中断：' + String(e.message || e) }); }
+    catch (e) {
+      var em2 = String(e.message || e);
+      var lm2 = /（第\s*(\d+)\s*行）/.exec(em2);
+      p.diags.push({ level: 'error', line: lm2 ? parseInt(lm2[1], 10) : 1, col: 1,
+                     msg: '解析中断：' + em2.replace(/（第\s*\d+\s*行）/g, '').trim() });
+    }
     return { ast: ast, diags: p.diags };
   }
 

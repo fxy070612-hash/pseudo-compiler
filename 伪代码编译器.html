@@ -1256,11 +1256,23 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
   function parse(src) {
     var toks;
     try { toks = new Lexer(src).tokenize(); }
-    catch (e) { return { ast: null, diags: [{ level: 'error', line: 1, col: 1, msg: String(e.message || e) }] }; }
+    catch (e) {
+      /* 解析/词法错误：消息里通常带「（第 N 行）」，把它取出来当诊断行号——
+         以前写死 line:1，结果所有语法错误都标在第 1 行，等于没告诉你错在哪。 */
+      var em = String(e.message || e);
+      var lm = /（第\s*(\d+)\s*行）/.exec(em);
+      var eln = lm ? parseInt(lm[1], 10) : 1;
+      return { ast: null, diags: [{ level: 'error', line: eln, col: 1, msg: em.replace(/（第\s*\d+\s*行）/g, '').trim() }] };
+    }
     var p = new Parser(toks);
     var ast = null;
     try { ast = p.parseProgram(); }
-    catch (e) { p.diags.push({ level: 'error', line: 1, col: 1, msg: '解析中断：' + String(e.message || e) }); }
+    catch (e) {
+      var em2 = String(e.message || e);
+      var lm2 = /（第\s*(\d+)\s*行）/.exec(em2);
+      p.diags.push({ level: 'error', line: lm2 ? parseInt(lm2[1], 10) : 1, col: 1,
+                     msg: '解析中断：' + em2.replace(/（第\s*\d+\s*行）/g, '').trim() });
+    }
     return { ast: ast, diags: p.diags };
   }
 
@@ -4695,6 +4707,17 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
         state.diagOpen = true;
       }
       dg.appendChild(line);
+      if (!ok) {
+        var pym = pythonMarkers(s && s.code ? s.code : (ed ? ed.value() : ''));
+        if (pym.length >= 2) {
+          var py = el('div', 'finding error',
+            '这看起来是 **Python** 代码（检测到：' + pym.join('、') + '），而本编辑器编译的是**伪代码**。');
+          py.appendChild(el('span', 'hint2',
+            '改成伪代码：函数头写 function 名字(A[1..n]) : int；块用 end 结束（if 条件 then … end、for i = 1 to n do … end），不要用冒号和缩进；'
+            + '不要用 def / import / elif、x.y() 方法调用、列表推导；数组下标默认从 1 开始。'));
+          dg.appendChild(py);
+        }
+      }
       var det = el('div', 'comp-detail' + ((state.diagOpen || !ok) ? '' : ' hidden'));
       res.diagnostics.slice(0, 12).forEach(function (d) {
         det.appendChild(el('div', 'diag ' + (d.level === 'error' ? 'err' : 'warn'), (d.level === 'error' ? '第 ' + d.line + ' 行：' : '提示：') + d.msg));
@@ -5977,6 +6000,20 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     '只输出 JSON，不要多余文字：',
     '{"lines":[行号,...],"why":"为什么这几行会导致该结果","fix":"应该怎么改（一句话）"}'
   ].join('\n');
+
+  /* 识别「这是 Python，不是伪代码」——用户很容易直接把 Python 粘进来，
+     只说「无法识别的字符 .」他看不懂，得直接告诉他该写什么。 */
+  function pythonMarkers(code) {
+    var s = String(code || ''), hits = [];
+    if (/(^|\n)\s*def\s+[A-Za-z_]\w*\s*\(/.test(s)) hits.push('def 定义函数');
+    if (/(^|\n)\s*(import|from)\s+[A-Za-z_]/.test(s)) hits.push('import 导入');
+    if (/(^|\n)\s*elif\b/.test(s)) hits.push('elif');
+    if (/[)\]\w]\s*:\s*(\n|$)/.test(s)) hits.push('行尾冒号');
+    if (/[A-Za-z_]\w*\.[A-Za-z_]\w*\s*\(/.test(s)) hits.push('x.y() 方法调用');
+    if (/\[[^\]\n]*\bfor\b[^\]\n]*\]/.test(s)) hits.push('列表推导');
+    if (/\b(len|sorted|append|range|print|reversed|enumerate)\s*\(/.test(s)) hits.push('Python 内置函数');
+    return hits;
+  }
 
   function numberedCode(code) {
     return String(code || '').split(NL).map(function (l, i) { return (i + 1) + '| ' + l; }).join(NL);
