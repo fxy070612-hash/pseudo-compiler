@@ -72,6 +72,11 @@ aside{width:252px;flex:0 0 252px;background:#fff;border-right:1px solid var(--li
 .ed-area{position:relative;flex:1;min-width:0}
 .ed-hl,.ed-input{position:absolute;inset:0;padding:10px 12px;margin:0;border:0;white-space:pre-wrap;word-break:normal;overflow-wrap:break-word;
   font-family:var(--mono);font-size:13px;line-height:21.06px;tab-size:2}
+/* 出错行标红：这一层只画背景色块，位置必须与 .ed-input 的行高/内边距一致（21.06px / 10px） */
+.ed-marks{position:absolute;inset:0;padding:0;margin:0;pointer-events:none;overflow:hidden;z-index:0}
+.ed-marks i{position:absolute;left:0;right:0;height:21.06px;background:rgba(214,45,32,.16);
+  box-shadow:inset 3px 0 0 0 rgba(214,45,32,.75)}
+.ed-gutter .ln-err{color:#d62d20;font-weight:700}
 .ed-hl{pointer-events:none;background:transparent;color:var(--ink);overflow:hidden}
 .ed-input{background:transparent;color:transparent;caret-color:var(--ink);resize:none;border-radius:0;box-shadow:none!important}
 .ed-input::selection{background:#cfe0ff}
@@ -387,11 +392,17 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
               <option value="1">数组 1-based</option>
               <option value="0">数组 0-based</option>
             </select>
+            <select id="engineSel" title="实测引擎：伪代码 = 内置解释器（离线）；Python = 服务器上真 Python 跑（更接近真实，需要同步口令）"
+                    style="font-size:12.5px;padding:3px 6px">
+              <option value="pseudo">实测：伪代码</option>
+              <option value="python">实测：Python</option>
+            </select>
             <button id="btnGrade" class="primary">AI 测评打分</button>
           </div>
           <div class="ed-wrap">
             <div class="ed-gutter" id="edGutter"></div>
             <div class="ed-area">
+              <div class="ed-marks" id="edMarks"></div>
               <pre class="ed-hl" id="edHl"></pre>
               <textarea class="ed-input" id="edInput" spellcheck="false" wrap="soft"></textarea>
             </div>

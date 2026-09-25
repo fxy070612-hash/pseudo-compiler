@@ -72,6 +72,11 @@ aside{width:252px;flex:0 0 252px;background:#fff;border-right:1px solid var(--li
 .ed-area{position:relative;flex:1;min-width:0}
 .ed-hl,.ed-input{position:absolute;inset:0;padding:10px 12px;margin:0;border:0;white-space:pre-wrap;word-break:normal;overflow-wrap:break-word;
   font-family:var(--mono);font-size:13px;line-height:21.06px;tab-size:2}
+/* 出错行标红：这一层只画背景色块，位置必须与 .ed-input 的行高/内边距一致（21.06px / 10px） */
+.ed-marks{position:absolute;inset:0;padding:0;margin:0;pointer-events:none;overflow:hidden;z-index:0}
+.ed-marks i{position:absolute;left:0;right:0;height:21.06px;background:rgba(214,45,32,.16);
+  box-shadow:inset 3px 0 0 0 rgba(214,45,32,.75)}
+.ed-gutter .ln-err{color:#d62d20;font-weight:700}
 .ed-hl{pointer-events:none;background:transparent;color:var(--ink);overflow:hidden}
 .ed-input{background:transparent;color:transparent;caret-color:var(--ink);resize:none;border-radius:0;box-shadow:none!important}
 .ed-input::selection{background:#cfe0ff}
@@ -387,11 +392,17 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
               <option value="1">数组 1-based</option>
               <option value="0">数组 0-based</option>
             </select>
+            <select id="engineSel" title="实测引擎：伪代码 = 内置解释器（离线）；Python = 服务器上真 Python 跑（更接近真实，需要同步口令）"
+                    style="font-size:12.5px;padding:3px 6px">
+              <option value="pseudo">实测：伪代码</option>
+              <option value="python">实测：Python</option>
+            </select>
             <button id="btnGrade" class="primary">AI 测评打分</button>
           </div>
           <div class="ed-wrap">
             <div class="ed-gutter" id="edGutter"></div>
             <div class="ed-area">
+              <div class="ed-marks" id="edMarks"></div>
               <pre class="ed-hl" id="edHl"></pre>
               <textarea class="ed-input" id="edInput" spellcheck="false" wrap="soft"></textarea>
             </div>
@@ -4137,6 +4148,11 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
   /* 数组下标基准：1（默认）或 0。只影响「起步模板写法 / 输入规格说明 / AI 判分口径」；
      编译器本身两种都支持——它按声明（A[1..n] 还是 A[0..n-1]）自动识别每个数组的基准。 */
   var BASEKEY = 'pseudo-array-base';
+  /* 实测引擎：pseudo = 内置伪代码解释器（离线可用）；python = 服务器上真 Python（更接近真实） */
+  var ENGKEY = 'pseudo-test-engine';
+  function testEngine() { try { return localStorage.getItem(ENGKEY) === 'python' ? 'python' : 'pseudo'; } catch (e) { return 'pseudo'; } }
+  function setTestEngine(v) { try { localStorage.setItem(ENGKEY, v === 'python' ? 'python' : 'pseudo'); } catch (e) { } }
+  function engineName() { return testEngine() === 'python' ? 'Python（服务器真跑）' : '伪代码（内置解释器）'; }
   function arrayBase() { try { return localStorage.getItem(BASEKEY) === '0' ? 0 : 1; } catch (e) { return 1; } }
   function setArrayBase(b) { try { localStorage.setItem(BASEKEY, b === 0 ? '0' : '1'); } catch (e) { } }
   function baseRange(name) { return arrayBase() === 0 ? (name + '[0..n-1]') : (name + '[1..n]'); }
@@ -4648,6 +4664,7 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       ed.setValue(s ? s.code : '', true);
       /* 记住编辑器里现在装的是哪个解法，避免把「别的解法的代码/空内容」误写回当前解法 */
       ed.solId = s ? s.id : null;
+      setEditorMarks([]);            // 换题目/换解法时清掉旧的标红
     }, '载入编辑器');
     safe(renderProblems, '题目列表');
     safe(renderSolutions, '解法列表');
@@ -4812,6 +4829,19 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       parts.push('');
       parts.push('【同题其他解法（对照，不是标准答案）】');
       extra.others.forEach(function (o, i) { parts.push((i + 1) + '. ' + (o.name || '')); parts.push(fence(o.code)); });
+    }
+    /* 最近的实测结果作为客观证据（引擎由学生选：伪代码内置解释器 / 服务器真 Python） */
+    if (s && s.pyCheck) {
+      var pc = s.pyCheck;
+      parts.push('');
+      parts.push('【学生最近一次实测（引擎：' + (pc.engine === 'python' ? 'Python 真跑' : '伪代码内置解释器')
+        + '）通过 ' + pc.pass + '/' + pc.total + '】');
+      if (pc.loadError) parts.push('· 代码运行报错：' + pc.loadError);
+      (pc.rows || []).slice(0, 6).forEach(function (r, i) {
+        parts.push('· 用例 ' + (i + 1) + '【' + r.verdict + '】期望 ' + jstr(r.expect) + '，实际 ' + jstr(r.got)
+          + (r.err ? ('，报错 ' + String(r.err).slice(0, 80)) : '') + '（输入 ' + jstr(r.args) + '）');
+      });
+      parts.push('注意：这是运行证据，不是评分依据；请仍以代码逻辑本身为准。');
     }
     return parts.join('\n');
   }
@@ -5028,17 +5058,17 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
       rejBtn.title = '对这次评分有异议？点这里把理由写给组长，重新复核一次';
       rejBtn.onclick = openReject;
       act.appendChild(rejBtn);
-      /* 真 Python 实测：AI 只按题目+签名随机出例（不看学生代码），服务器上用真 Python 跑后逐例比对 */
-      var pyBtn = el('button', 'reject-btn', '真 Python 实测');
+      /* 实测检查：AI 只按题目+签名随机出例（不看学生代码），再按所选引擎逐例比对 */
+      var pyBtn = el('button', 'reject-btn', '实测检查');
       pyBtn.id = 'btnPyCheck';
-      pyBtn.title = '让 AI 随机出 4 组测试数据 → 服务器上用真 Python 运行你的代码 → 逐组比对输出（不通过会明确标红）';
+      pyBtn.title = '让 AI 随机出测试数据 → 用「实测引擎」下拉选定的引擎运行你的代码 → 逐组比对输出；不通过会标红并在源码里指出出错行';
       pyBtn.onclick = function () {
         var st = currentSolution();
         var rr = (st && st.result && st.result.ok) ? st.result : (st ? C.compile(st.code, {}) : null);
         pyCheck(currentProblem(), st, rr);
       };
       act.appendChild(pyBtn);
-      act.appendChild(el('span', 'hint', '实测走服务器真 Python（沙箱、8 秒超时）；AI 出例时不看你的代码，期望值由它独立算出。'));
+      act.appendChild(el('span', 'hint', '引擎在编辑器右上角选：伪代码（内置解释器，离线）或 Python（服务器真跑）。AI 出例时不看你的代码，期望值由它独立算出。'));
       act.appendChild(el('span', 'hint', '会重新交给多位评委盲评（他们看不到你之前的分数），再由组长逐条核实你的理由：不成立就维持原分，成立才改判。'));
       box.appendChild(act);
       if (g.appeals && g.appeals.length) {
@@ -5067,8 +5097,9 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
         var pc = s.pyCheck;
         var bad = (pc.total || 0) - (pc.pass || 0);
         var pcCard = el('div', 'card');
-        pcCard.appendChild(el('div', 'card-title',
-          '真 Python 实测 · 通过 ' + pc.pass + '/' + pc.total + (pc.python ? '（' + pc.python + '）' : '')));
+      pcCard.appendChild(el('div', 'card-title',
+          '实测检查（' + (pc.engine === 'python' ? 'Python · 服务器真跑' : '伪代码 · 内置解释器') + '）· 通过 '
+          + pc.pass + '/' + pc.total + (pc.python ? '（' + pc.python + '）' : '')));
         if (pc.loadError) {
           pcCard.appendChild(el('div', 'finding error', '✗ 你的代码在 Python 里跑不起来：' + pc.loadError));
         } else if (bad > 0) {
@@ -5733,6 +5764,15 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     bindToggle($('tglSolution'), $('bodySolution'), 'sec-solution');
     bindToggle($('tglSync'), $('bodySync'), 'sec-sync');
     /* 数组下标基准切换：只改「起步模板写法 + AI 判分口径」，不动学生已有的代码 */
+    /* 实测引擎切换：伪代码（内置解释器，离线）/ Python（服务器真跑） */
+    var esel = $('engineSel');
+    if (esel) {
+      esel.value = testEngine();
+      esel.onchange = function () {
+        setTestEngine(esel.value);
+        toast('实测引擎已切到 ' + engineName() + (testEngine() === 'python' ? '（需要先保存同步口令）' : '（离线可用，不需要口令）'));
+      };
+    }
     var bsel = $('baseSel');
     if (bsel) {
       bsel.value = String(arrayBase());
@@ -5836,6 +5876,70 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     return parts.join(NL);
   }
 
+  /* ---------------- 源码标注：把执行端的报错行对回伪代码行并标红 ----------------
+   * Python 报错给的是**生成代码**的行号，学生看的是伪代码，所以要映射回去。
+   * 做法：生成器基本保持语句顺序，于是对两边逐行做词元重叠度对齐（单调、不回头），
+   * 相似度不够就不映射——宁可少标，也不标错行。 */
+  function normTokens(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9_\u4e00-\u9fa5]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  }
+
+  function alignPyToPseudo(pySrc, pseudoSrc) {
+    var py = String(pySrc || '').split(NL);
+    var ps = String(pseudoSrc || '').split(NL);
+    var psTok = ps.map(function (l) { return normTokens(String(l).replace(/\/\/.*$/, '')); });
+    var map = {}, cursor = 0;
+    for (var i = 0; i < py.length; i++) {
+      var t = normTokens(String(py[i]).replace(/#.*$/, ''));
+      if (!t.length) continue;
+      var best = -1, bestScore = 0;
+      for (var j = cursor; j < psTok.length; j++) {
+        var q = psTok[j];
+        if (!q.length) continue;
+        var inter = 0;
+        for (var a = 0; a < t.length; a++) if (q.indexOf(t[a]) >= 0) inter++;
+        var score = inter / Math.max(t.length, q.length);
+        if (score > bestScore) { bestScore = score; best = j; }
+      }
+      if (best >= 0 && bestScore >= 0.34) { map[i + 1] = best + 1; cursor = best; }
+    }
+    return map;
+  }
+
+  function setEditorMarks(lines) {
+    var box = $('edMarks'), gut = $('edGutter');
+    state.errLines = (lines || []).filter(function (n) { return n > 0; });
+    if (box) {
+      while (box.firstChild) box.removeChild(box.firstChild);
+      state.errLines.forEach(function (ln) {
+        var d = document.createElement('i');
+        d.style.top = (10 + (ln - 1) * 21.06) + 'px';   // 与 .ed-input 的 padding-top/line-height 对齐
+        box.appendChild(d);
+      });
+    }
+    if (gut) {
+      var nums = String(gut.textContent || '').split(NL);
+      gut.innerHTML = nums.map(function (t, idx) {
+        var n = idx + 1;
+        return state.errLines.indexOf(n) >= 0 ? ('<span class="ln-err">' + t + '</span>') : t;
+      }).join(NL);
+    }
+  }
+
+  /* 从执行端的报错信息里取出「生成代码的行号」，再对回伪代码行 */
+  function errorPseudoLines(res, s, row) {
+    if (!row) return [];
+    var txt = String(row.where || '') + ' ' + String(row.err || row.error || '');
+    var m = /line (\d+)/.exec(txt);
+    if (!m) return [];
+    var pyLine = parseInt(m[1], 10);
+    if (!pyLine) return [];
+    try {
+      var map = alignPyToPseudo(C.pyStandalone(res), s.code || '');
+      return map[pyLine] ? [map[pyLine]] : [];
+    } catch (e) { return []; }
+  }
+
   function jstr(v) {
     try {
       var s = JSON.stringify(v);
@@ -5844,50 +5948,124 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     } catch (e) { return String(v); }
   }
 
+  /* 伪代码引擎：用内置解释器跑某一组用例。
+     注意解释器的约定与 Python 路径不同：1-based 伪代码是「按 A[i] 直接取」，
+     所以数组要补一个下标 0 的占位；0-based 则原样传。 */
+  function buildPseudoInput(res, args) {
+    var inp = {}, bases = (res && res.bases) || {};
+    Object.keys(args || {}).forEach(function (k) {
+      var v = args[k];
+      if (Array.isArray(v) && bases[k] === 1) {
+        inp[k] = [0].concat(v.slice());
+      } else {
+        inp[k] = v;
+      }
+    });
+    return inp;
+  }
+
+  function firstOut(v) {
+    return (Array.isArray(v) && v.length === 1) ? v[0] : v;
+  }
+
+  function runCasesPseudo(res, cases) {
+    var out = [];
+    for (var i = 0; i < cases.length; i++) {
+      var c = cases[i] || {};
+      var args = c.args && typeof c.args === 'object' ? c.args : {};
+      var got = null, err = '', where = '';
+      try {
+        var inp = buildPseudoInput(res, args);
+        var t0 = Date.now();
+        var run = C.executeCompiled(res, inp, {});
+        var ms = Date.now() - t0;
+        if (run && run.err) {
+          err = String((run.err && run.err.message) || run.err);
+          if (run.err && run.err.line) where = 'line ' + run.err.line;
+        } else {
+          got = firstOut(run && run.out !== undefined ? (C.pyUnwrap ? C.pyUnwrap(run.out) : run.out) : null);
+        }
+        out.push({ args: args, expect: c.expect, got: got, ok: !err, err: err, where: where, ms: ms,
+                   why: c.why || '', expectDefined: ('expect' in c) });
+      } catch (e) {
+        out.push({ args: args, expect: c.expect, got: null, ok: false, err: String(e && e.message || e), where: '',
+                   ms: 0, why: c.why || '', expectDefined: ('expect' in c) });
+      }
+    }
+    return { ok: true, python: '伪代码解释器（内置）', exit: 0, loadError: res && res.ok ? '' : '伪代码编译未通过',
+             entry: (res && res.entry) || '', results: out, ms: 0 };
+  }
+
+  function verdictOf(r, c) {
+    if (!r || !r.ok) return '运行出错';
+    if (!(c && ('expect' in c))) return '未给期望值';
+    return jstr(r.got) === jstr(c.expect) ? '通过' : '不符';
+  }
+
   function pyCheck(p, s, res) {
-    var tok = syncToken();
-    if (!tok) { toast('真 Python 实测走服务器执行，请先在左侧「云端同步」里保存口令', 'bad'); return; }
+    var engine = testEngine();
     if (!res || !res.ok) { toast('先在编辑器里编译通过，才能实测', 'bad'); return; }
+    if (engine === 'python' && !syncToken()) {
+      toast('Python 实测走服务器执行，请先在左侧「云端同步」保存口令；或把实测引擎切成「伪代码」离线测试', 'bad');
+      return;
+    }
     var btn = $('btnPyCheck');
     if (btn && btn.disabled) return;
     if (btn) { btn.disabled = true; btn.textContent = '出例 + 实测中…'; }
-    toast('AI 正在随机出测试数据…', '');
-    function done() { if (btn) { btn.disabled = false; btn.textContent = '真 Python 实测'; } }
+    toast('AI 正在随机出测试数据…（引擎：' + engineName() + '）', '');
+    function done() { if (btn) { btn.disabled = false; btn.textContent = '实测检查'; } }
+
     aiCall(AI_CASE_SYS, buildCasePrompt(p, res)).then(function (txt) {
       var j = extractJson(txt);
       var cases = (j && j.cases) || (Array.isArray(j) ? j : null);
       if (!cases || !cases.length) throw new Error('AI 没给出测试数据');
       cases = cases.slice(0, 12);
-      toast('拿到 ' + cases.length + ' 组数据，正在用真 Python 运行…', '');
+      if (engine === 'pseudo') {
+        toast('拿到 ' + cases.length + ' 组数据，正在用内置伪代码解释器运行…', '');
+        return { engine: 'pseudo', d: runCasesPseudo(res, cases), cases: cases };
+      }
+      toast('拿到 ' + cases.length + ' 组数据，正在用服务器真 Python 运行…', '');
       return fetch(RUNNER_URL, {
         method: 'POST',
-        headers: { 'X-Bank-Token': tok, 'Content-Type': 'application/json' },
+        headers: { 'X-Bank-Token': syncToken(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: C.pyStandalone(res), entry: res.entry || '', cases: cases })
       }).then(function (r) {
         return r.text().then(function (t) {
           var d = null; try { d = JSON.parse(t); } catch (e) { }
           if (!d) throw new Error('执行端返回异常：' + t.slice(0, 120));
           if (!r.ok || d.error) throw new Error(d.hint || d.error || ('HTTP ' + r.status));
-          return { d: d, cases: cases };
+          return { engine: 'python', d: d, cases: cases };
         });
       });
     }).then(function (o) {
       var d = o.d, cases = o.cases;
       var rows = (d.results || []).map(function (r, i) {
         var c = cases[i] || {};
-        return { args: c.args, expect: c.expect, got: r.ret, ok: r.ok, err: r.error || '',
-                 verdict: (d.verdicts || [])[i] || '', ms: r.ms, why: c.why || '', stdout: r.stdout || '' };
+        return { args: c.args, expect: c.expect, got: r.ret !== undefined ? r.ret : r.got, ok: !!r.ok,
+                 err: r.error || r.err || '', where: r.where || '', ms: r.ms,
+                 why: c.why || '', verdict: verdictOf({ ok: !!r.ok, got: r.ret !== undefined ? r.ret : r.got }, c) };
       });
       var pass = rows.filter(function (x) { return x.verdict === '通过'; }).length;
+      var badRows = rows.filter(function (x) { return x.verdict !== '通过'; });
       s.pyCheck = {
-        at: Date.now(), python: d.python || '', entry: d.entry || '', loadError: d.loadError || '',
-        rows: rows, pass: pass, total: rows.length, ms: d.ms || 0
+        at: Date.now(), engine: o.engine, python: d.python || '', entry: d.entry || '',
+        loadError: d.loadError || '', rows: rows, pass: pass, total: rows.length, ms: d.ms || 0
       };
+      /* 把报错行对回伪代码并标红（跑不起来 → 标第一行；输出不符且执行报错 → 对回具体行） */
+      var marks = [];
+      if (d.loadError) {
+        marks = [1];
+      } else {
+        badRows.forEach(function (r) {
+          errorPseudoLines(res, s, r).forEach(function (n) { if (marks.indexOf(n) < 0) marks.push(n); });
+        });
+      }
+      setEditorMarks(marks);
       save();
       state.gradeTab = 'overview';
       renderGrade(s);
-      var msg = '真 Python 实测：通过 ' + pass + '/' + rows.length;
-      if (d.loadError) msg += '（代码运行报错）';
+      var msg = '实测（' + (o.engine === 'python' ? 'Python' : '伪代码') + '）：通过 ' + pass + '/' + rows.length;
+      if (marks.length) msg += ' · 错误行已标红（第 ' + marks.join('、') + ' 行）';
       toast(msg, pass === rows.length ? 'ok' : 'bad');
     }).catch(function (e) {
       toast('实测失败：' + String(e && e.message || e).slice(0, 60), 'bad');
@@ -6060,7 +6238,11 @@ button.mini{padding:1px 8px;font-size:14px;line-height:1.3;border-radius:7px;col
     if (!state.problems.length) state.problems = [demoProblem()];
     state.currentId = state.problems[0].id;
     ed = new Editor();
-    ed.onChange = function () { var s = currentSolution(); if (s) { adoptEditorCode(s); autosave(); } };
+    ed.onChange = function () {
+      var s = currentSolution();
+      if (s) { adoptEditorCode(s); autosave(); }
+      setEditorMarks([]);          // 代码一改，之前的标红就作废
+    };
     try {
       if (typeof window !== 'undefined' && window.addEventListener) {
         window.addEventListener('error', function (ev) { toast('页面出错：' + (ev && ev.message ? ev.message : '未知'), 'bad'); });
